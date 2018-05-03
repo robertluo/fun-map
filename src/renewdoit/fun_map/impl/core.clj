@@ -1,4 +1,4 @@
-(ns fun-map.core
+(ns renewdoit.fun-map.impl.core
   (:import [clojure.lang
             IPersistentMap
             Associative

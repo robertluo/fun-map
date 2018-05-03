@@ -1,0 +1,1 @@
+(ns renewdoit.fun-map)
