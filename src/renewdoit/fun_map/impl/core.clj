@@ -5,11 +5,13 @@
             IMapEntry
             Counted
             IPersistentCollection
+            APersistentMap
+            ArraySeq
+            MapEquivalence
             Seqable
             ILookup]))
 
-(deftype FunMapEntry
-  [val-fn ^IMapEntry entry]
+(deftype FunMapEntry [val-fn ^IMapEntry entry]
   IMapEntry
   (key [this]
     (.key entry))
@@ -20,9 +22,22 @@
   (getKey [this]
     (.key this))
   (getValue [this]
-    (.val this)))
+    (.val this))
 
-(deftype FunMap [val-fn ^IPersistentMap m]
+  Seqable
+  (seq [this]
+    (seq [(.key this) (.val this)])))
+
+(deftype FunMap [val-fn m]
+  MapEquivalence
+  java.util.Map
+  (containsKey [this k]
+    (.containsKey m k))
+  (get [this k]
+    (.valAt this k))
+  (size [this]
+    (.count m))
+
   IPersistentMap
   (assoc [this k v]
     (FunMap. val-fn (.assoc m k v)))
@@ -49,7 +64,7 @@
   (empty [_]
     (FunMap. val-fn (.empty m)))
   (equiv [this o]
-    false)
+    (APersistentMap/mapEquals this o))
 
   Seqable
   (seq [this]
@@ -60,21 +75,12 @@
     (when-let [^IMapEntry entry (.entryAt this k)]
       (.val entry)))
   (valAt [this k not-found]
-    (or (.valAt this k) not-found))
-  )
+    (or (.valAt this k) not-found)))
 
 (defn function-val-fn
   [fm]
   (fn [val]
     (if (fn? val) (val fm) val)))
-
-(def fun-map
-  (partial ->FunMap function-val-fn))
-
-(defmacro fnk
-  [args & body]
-  `(fn [{:keys ~args}]
-     ~@body))
 
 (comment
   (def m (fun-map {:a 4
@@ -84,4 +90,4 @@
   (:d m)
   (def m (assoc m :e (fnk [d] (str d))))
   (def m (assoc m :f/a -35 :f/b (fnk [:f/a] (* 2 a))))
-)
+  (instance? java.util.Map (fun-map {})))
