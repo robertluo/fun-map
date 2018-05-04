@@ -11,12 +11,23 @@
             Seqable
             ILookup]))
 
-(deftype FunMapEntry [val-fn ^IMapEntry entry]
+(deftype FnPromise [f prom])
+
+(deftype FunMapEntry [val-fn entry]
   IMapEntry
   (key [this]
     (.key entry))
   (val [this]
-    (val-fn (.val entry)))
+    (let [v (.val entry)]
+      (if (instance? FnPromise v)
+        (let [f (.f v)
+              prom (.prom v)]
+          (if (realized? prom)
+            (deref prom)
+            (do
+              (deliver prom (val-fn f))
+              (deref prom))))
+        v)))
 
   java.util.Map$Entry
   (getKey [this]
@@ -27,6 +38,15 @@
   Seqable
   (seq [this]
     (seq [(.key this) (.val this)])))
+
+(defn v->fp [v]
+  (if (fn? v)
+    (FnPromise. v (promise))
+    v))
+
+(defn entry->fpe
+  [[k v]]
+  (clojure.lang.MapEntry. k (v->fp v)))
 
 (deftype FunMap [val-fn m]
   MapEquivalence
@@ -40,9 +60,9 @@
 
   IPersistentMap
   (assoc [this k v]
-    (FunMap. val-fn (.assoc m k v)))
+    (FunMap. val-fn (.assoc m k (v->fp v))))
   (assocEx [this k v]
-    (FunMap. val-fn (.assocEx m k v)))
+    (FunMap. val-fn (.assocEx m k (v->fp v))))
   (without [this k]
     (FunMap. val-fn (.without m k)))
 
@@ -60,7 +80,7 @@
 
   IPersistentCollection
   (cons [_ o]
-    (FunMap. val-fn (.cons m o)))
+    (FunMap. val-fn (.cons m (entry->fpe o))))
   (empty [_]
     (FunMap. val-fn (.empty m)))
   (equiv [this o]
@@ -83,6 +103,8 @@
     (if (fn? val) (val fm) val)))
 
 (comment
+  (def fm (-> (->FunMap function-val-fn {})
+              (into {:a 4 :b (constantly 10)})))
   (def m (fun-map {:a 4
                    :b "ok"
                    :c (constantly 10)
