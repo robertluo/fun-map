@@ -1,4 +1,12 @@
 (ns renewdoit.fun-map.impl.core
+  "implementation of fun-maps.
+
+  a fun-map delegates its storage to underlying map m,
+  m stores k,v pair with value wrapped inside a wrapper,
+  when requested an entry from a fun-map, instead of
+  returning map entry like an ordinary map, it returns
+  a special version of entry, evaluate it's value by
+  invoking the wrapper."
   (:import [clojure.lang
             IPersistentMap
             Associative
@@ -11,44 +19,16 @@
             Seqable
             ILookup]))
 
-(deftype FnPromise [f prom])
+(defprotocol ValueWrapper
+  (unwrap [this m]
+    "unwrap the real value from a wrapper"))
 
-(deftype FunMapEntry [val-fn entry]
-  IMapEntry
-  (key [this]
-    (.key entry))
-  (val [this]
-    (let [v (.val entry)]
-      (if (instance? FnPromise v)
-        (let [f (.f v)
-              prom (.prom v)]
-          (if (realized? prom)
-            (deref prom)
-            (do
-              (deliver prom (val-fn f))
-              (deref prom))))
-        v)))
+(defn wrapped-entry [m ^IMapEntry entry]
+  (proxy [clojure.lang.MapEntry] [(.key entry) (.val entry)]
+    (val []
+      (unwrap (proxy-super val) m))))
 
-  java.util.Map$Entry
-  (getKey [this]
-    (.key this))
-  (getValue [this]
-    (.val this))
-
-  Seqable
-  (seq [this]
-    (seq [(.key this) (.val this)])))
-
-(defn v->fp [v]
-  (if (fn? v)
-    (FnPromise. v (promise))
-    v))
-
-(defn entry->fpe
-  [[k v]]
-  (clojure.lang.MapEntry. k (v->fp v)))
-
-(deftype FunMap [val-fn m]
+(deftype FunMap [wrap-fn m]
   MapEquivalence
   java.util.Map
   (containsKey [this k]
@@ -60,15 +40,15 @@
 
   IPersistentMap
   (assoc [this k v]
-    (FunMap. val-fn (.assoc m k (v->fp v))))
+    (FunMap. wrap-fn (.assoc m k (wrap-fn v))))
   (assocEx [this k v]
-    (FunMap. val-fn (.assocEx m k (v->fp v))))
+    (FunMap. wrap-fn (.assocEx m k (wrap-fn v))))
   (without [this k]
-    (FunMap. val-fn (.without m k)))
+    (FunMap. wrap-fn (.without m k)))
 
   Associative
   (entryAt [this k]
-    (FunMapEntry. (val-fn this) (.entryAt m k)))
+    (wrapped-entry this (.entryAt m k)))
 
   Counted
   (count [this]
@@ -79,10 +59,14 @@
     (.iterator m))
 
   IPersistentCollection
-  (cons [_ o]
-    (FunMap. val-fn (.cons m (entry->fpe o))))
+  (cons [this o]
+    (cond
+      (instance? java.util.Map$Entry o)
+      (.assoc this (.getKey o) (wrap-fn (.getValue o)))
+      (instance? clojure.lang.IPersistentVector o)
+      (.assoc this (.nth o 0) (wrap-fn (.nth o 1)))))
   (empty [_]
-    (FunMap. val-fn (.empty m)))
+    (FunMap. wrap-fn (.empty m)))
   (equiv [this o]
     (APersistentMap/mapEquals this o))
 
@@ -97,19 +81,35 @@
   (valAt [this k not-found]
     (or (.valAt this k) not-found)))
 
-(defn function-val-fn
-  [fm]
-  (fn [val]
-    (if (fn? val) (val fm) val)))
+(comment
+  (merge (->FunMap function-wrapper {}) {:a 1}))
+
+(defn fun-map*
+  "create a fun-map with wrapper-fn to wrap values of underlying m"
+  [wrapper-fn m]
+  (reduce-kv
+   (fn [acc k v] (assoc acc k v))
+   (FunMap. wrapper-fn (.empty m))
+   m))
+
+;;;;;;;;;;;; Function wrapper
+
+(deftype FunctionWrapper [v prom]
+  ValueWrapper
+  (unwrap [_ m]
+    (if (nil? prom)
+      v
+      (do
+        (when-not (realized? prom)
+          (deliver prom (v m)))
+        (deref prom)))))
+
+(defn function-wrapper
+  "returns a FunctionWrapper wraps value v"
+  [v]
+  (if (fn? v)
+    (FunctionWrapper. v (promise))
+    (FunctionWrapper. v nil)))
 
 (comment
-  (def fm (-> (->FunMap function-val-fn {})
-              (into {:a 4 :b (constantly 10)})))
-  (def m (fun-map {:a 4
-                   :b "ok"
-                   :c (constantly 10)
-                   :d (fnk [c] (prn :d) (* c c))}))
-  (:d m)
-  (def m (assoc m :e (fnk [d] (str d))))
-  (def m (assoc m :f/a -35 :f/b (fnk [:f/a] (* 2 a))))
-  (instance? java.util.Map (fun-map {})))
+  (def fm (fun-map* function-wrapper {:a 3 :b (fn [{:keys [a]}] (+ a 5))})))
