@@ -101,6 +101,6 @@
 (defn function-wrapper
   "returns a FunctionWrapper wraps value v"
   [trace-fn k v]
-  (if (and (fn? v) (not (some-> v meta :no-wrap)))
+  (if (and (fn? v) (some-> v meta :wrap))
     (FunctionWrapper. v (promise) (when trace-fn (partial trace-fn k)))
     v))

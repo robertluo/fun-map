@@ -48,11 +48,11 @@ Or future objects as values that will be accessed at same time.
 
 ### Where fun begins
 
-A function in fun-map as a value takes the map itself as the argument, return value will be *unwrapped* when accessed by key.
+A function in fun-map and has `:wrap` meta as `true` takes the map itself as the argument, return value will be *unwrapped* when accessed by key.
 
 ```clojure
 (def m (fun-map {:xs (range 10)
-                 :count-keys (fn [m] (count (keys m)))
+                 :count-keys ^:wrap (fn [m] (count (keys m)))
                  :sum (fnk [xs] (apply + xs))
                  :cnt (fnk [xs] (count xs)
                  :avg (fnk [sum cnt] (/ sum cnt)))}))

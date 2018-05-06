@@ -24,5 +24,7 @@
 (defmacro fnk
   "a function with all its args take"
   [args & body]
-  `(fn [{:keys ~args}]
-     ~@body))
+  `(with-meta
+     (fn [{:keys ~args}]
+       ~@body)
+     {:wrap true}))
