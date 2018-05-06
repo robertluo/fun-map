@@ -43,10 +43,10 @@
         (wrapped-entry this (.entryAt m k))))
 
     (assoc [k v]
-      (delegate-map wrap-fn (.assoc m k (wrap-fn v))))
+      (delegate-map wrap-fn (.assoc m k (wrap-fn k v))))
 
     (assocEx [k v]
-      (delegate-map wrap-fn (.assocEx m k (wrap-fn v))))
+      (delegate-map wrap-fn (.assocEx m k (wrap-fn k v))))
 
     (empty []
       (delegate-map wrap-fn (.empty m)))
@@ -68,7 +68,7 @@
     (seq []
       (clojure.lang.IteratorSeq/create (.iterator this)))))
 
-(defn fun-map*
+(defn delegate-map*
   "create a fun-map with wrapper-fn to wrap values of underlying m"
   [wrapper-fn m]
   (reduce-kv
@@ -78,19 +78,23 @@
 
 ;;;;;;;;;;;; Function wrapper
 
-(deftype FunctionWrapper [v prom]
+(extend-protocol ValueWrapper
+  Object
+  (unwrap [o _]
+    o))
+
+(deftype FunctionWrapper [v prom trace-fn]
   ValueWrapper
   (unwrap [_ m]
-    (if (nil? prom)
-      v
-      (do
-        (when-not (realized? prom)
-          (deliver prom (v m)))
-        (deref prom)))))
+    (when-not (realized? prom)
+      (let [rv (v m)]
+        (deliver prom rv)
+        (when trace-fn (trace-fn rv))))
+    (deref prom)))
 
 (defn function-wrapper
   "returns a FunctionWrapper wraps value v"
-  [v]
+  [trace-fn k v]
   (if (fn? v)
-    (FunctionWrapper. v (promise))
-    (FunctionWrapper. v nil)))
+    (FunctionWrapper. v (promise) (when trace-fn (partial trace-fn k)))
+    v))

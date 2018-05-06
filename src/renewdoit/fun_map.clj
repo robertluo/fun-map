@@ -9,8 +9,13 @@
   with the map itself and returns the value as the value
   when referred by the key associated, and only
   be invoked once."
+  [m & {:keys [trace-fn]}]
+  (impl/delegate-map* (partial impl/function-wrapper trace-fn) m))
+
+(defn touch
+  "forcefully evaluate all entries of a map"
   [m]
-  (impl/fun-map* impl/function-wrapper m))
+  (select-keys m (keys m)))
 
 (defmacro fnk
   "a function with all its args take"

@@ -23,3 +23,12 @@
 
   (testing "meta data support"
     (is (= {:msg "ok"} (meta (with-meta (fun-map {:a 3}) {:msg "ok"}))))))
+
+(deftest trace-map-test
+  (testing "invocation record"
+    (let [traced (atom [])
+          m (fun-map {:a 5 :b (fnk [a] (inc a)) :c (fnk [b] (inc b))}
+                     :trace-fn #(swap! traced conj [%1 %2]))
+          _ (:c m)]
+      (is (= [[:b 6] [:c 7]]
+             @traced)))))
