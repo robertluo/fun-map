@@ -1,6 +1,6 @@
 (ns renewdoit.fun-map
   (:require
-   [renewdoit.fun-map.impl.core :as impl]))
+   [renewdoit.fun-map.core :as impl]))
 
 (defn fun-map
   "Returns a new fun-map.

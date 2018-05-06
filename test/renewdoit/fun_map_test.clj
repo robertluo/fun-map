@@ -18,5 +18,8 @@
       (is (= {:a 3 :b 4} m))
       (is (= {:a 3 :b 4} m))))
 
-  #_(testing "merge fun-map with another map"
-      (is (= {:a 3 :b 4} (merge (fun-map {:a 3}) {:b (fnk [a] (inc a))})))))
+  (testing "merge fun-map with another map"
+    (is (= {:a 3 :b 4} (merge (fun-map {:a 3}) {:b (fnk [a] (inc a))}))))
+
+  (testing "meta data support"
+    (is (= {:msg "ok"} (meta (with-meta (fun-map {:a 3}) {:msg "ok"}))))))
