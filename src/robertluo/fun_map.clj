@@ -1,7 +1,7 @@
-(ns renewdoit.fun-map
+(ns robertluo.fun-map
   "fun-map Api"
   (:require
-   [renewdoit.fun-map.core :as impl]))
+   [robertluo.fun-map.core :as impl]))
 
 (defn fun-map
   "Returns a new fun-map.

@@ -1,4 +1,4 @@
-(ns renewdoit.fun-map.core
+(ns robertluo.fun-map.core
   "implementation of fun-maps.
 
   a fun-map delegates its storage to underlying map m,
@@ -21,7 +21,7 @@
       (unwrap (proxy-super val) m))))
 
 (defn delegate-map [wrap-fn ^APersistentMap m]
-  (proxy [APersistentMap] []
+  (proxy [APersistentMap clojure.lang.IObj] []
     (meta []
       (.meta m))
 
@@ -101,6 +101,6 @@
 (defn function-wrapper
   "returns a FunctionWrapper wraps value v"
   [trace-fn k v]
-  (if (fn? v)
+  (if (and (fn? v) (not (some-> v meta :no-wrap)))
     (FunctionWrapper. v (promise) (when trace-fn (partial trace-fn k)))
     v))

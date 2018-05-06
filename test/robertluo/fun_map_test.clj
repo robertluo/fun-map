@@ -1,6 +1,6 @@
-(ns renewdoit.fun-map-test
+(ns robertluo.fun-map-test
   (:require [clojure.test :refer :all]
-            [renewdoit.fun-map :refer :all]))
+            [robertluo.fun-map :refer :all]))
 
 (deftest fun-map-test
   (testing "computed attribute of other attributes"
@@ -24,6 +24,11 @@
   (testing "meta data support"
     (is (= {:msg "ok"} (meta (with-meta (fun-map {:a 3}) {:msg "ok"}))))))
 
+(deftest reassoc-test
+  (testing "when reassoc value to fun-map, its function can be re-invoked"
+    (is (= 11
+         (-> (fun-map {:a 2 :b (fnk [a] (inc a))}) (assoc :a 10) :b)))))
+
 (deftest dref-test
   (testing "delay, future, delayed future value will be deref when accessed"
     (is (= {:a 3 :b 4 :c 5}
@@ -37,3 +42,8 @@
           _ (:c m)]
       (is (= [[:b 6] [:c 7]]
              @traced)))))
+
+(deftest no-wrap-test
+  (testing "when a function has :no-wrap meta, it will be stored as is"
+    (is (= "ok"
+          ((-> (fun-map {:a ^:no-wrap (fn [] "ok")}) :a))))))
