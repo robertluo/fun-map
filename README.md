@@ -23,7 +23,7 @@ As a lazy map without `delay`, because a function is only be called when accesse
 ```clojure
 (require '[robertluo.fun-map :refer [fun-map fnk touch]])
 
-(def m (fun-map {:a 4 :b (fn [_] (println "accessing :b") 10)}))
+(def m (fun-map {:a 4 :b (fnk [_] (println "accessing :b") 10)}))
 
 (:b m)
 
@@ -54,8 +54,8 @@ A function in fun-map and has `:wrap` meta as `true` takes the map itself as the
 (def m (fun-map {:xs (range 10)
                  :count-keys ^:wrap (fn [m] (count (keys m)))
                  :sum (fnk [xs] (apply + xs))
-                 :cnt (fnk [xs] (count xs)
-                 :avg (fnk [sum cnt] (/ sum cnt)))}))
+                 :cnt (fnk [xs] (count xs))
+                 :avg (fnk [sum cnt] (/ sum cnt))}))
 (:avg m)
 ;;=> 9/2
 
