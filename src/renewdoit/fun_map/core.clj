@@ -9,7 +9,6 @@
   invoking the wrapper."
   (:import [clojure.lang
             IMapEntry
-            IObj
             APersistentMap]))
 
 (defprotocol ValueWrapper
@@ -22,7 +21,7 @@
       (unwrap (proxy-super val) m))))
 
 (defn delegate-map [wrap-fn ^APersistentMap m]
-  (proxy [APersistentMap IObj] []
+  (proxy [APersistentMap] []
     (meta []
       (.meta m))
 
@@ -81,7 +80,14 @@
 (extend-protocol ValueWrapper
   Object
   (unwrap [o _]
-    o))
+    o)
+  clojure.lang.IDeref
+  (unwrap [d _]
+    (loop [r d]
+      (let [v (deref r)]
+        (if (instance? clojure.lang.IDeref v)
+          (recur v)
+          v)))))
 
 (deftype FunctionWrapper [v prom trace-fn]
   ValueWrapper

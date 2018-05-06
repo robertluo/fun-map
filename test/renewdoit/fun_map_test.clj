@@ -24,6 +24,11 @@
   (testing "meta data support"
     (is (= {:msg "ok"} (meta (with-meta (fun-map {:a 3}) {:msg "ok"}))))))
 
+(deftest dref-test
+  (testing "delay, future, delayed future value will be deref when accessed"
+    (is (= {:a 3 :b 4 :c 5}
+           (fun-map {:a (delay 3) :b (future 4) :c (delay (future 5))})))))
+
 (deftest trace-map-test
   (testing "invocation record"
     (let [traced (atom [])
