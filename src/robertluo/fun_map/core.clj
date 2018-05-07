@@ -81,6 +81,9 @@
   Object
   (unwrap [o _]
     o)
+  nil
+  (unwrap [_ _]
+    nil)
   clojure.lang.IDeref
   (unwrap [d _]
     (loop [r d]
