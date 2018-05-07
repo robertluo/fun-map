@@ -78,7 +78,21 @@ Instead of statically compiled, invocation of fun-map's function can be traced.
 ;;=> [[:b 4] [:c 5]]
 ```
 
+### case: system map for orderred shutdown
+
 In above example, the invocations is ordered, so it can be used in a scenario like a dependency graph.
+
+```clojure
+(defn fun-map->sys [fm-def]
+  (let [components (atom [])
+        sys (fun-map fm-def 
+               :trace-fn (fn [_ v] 
+                           (when (instance? Closable v)
+                             (swap! components conj v))))
+        halt-fn (fn [] (doseq [comp (reverse @components)]
+                         (.close comp)))]
+      [sys halt-fn]))
+```
 
 ## License
 
