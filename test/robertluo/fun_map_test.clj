@@ -54,7 +54,7 @@
           component (fn [k] 
                       (reify java.io.Closeable
                         (close [_] (swap! close-order conj k))))
-          sys (system-map {:a (component :a) :b (fnk [a] (component :b))})]
+          sys (system-map {:a (fnk [] (component :a)) :b (fnk [a] (component :b))})]
       (:b sys)
       (.close sys)
       (is (= [:a :b] @close-order)))))
