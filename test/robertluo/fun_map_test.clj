@@ -52,7 +52,7 @@
   (testing "a system map will close its components in order"
     (let [close-order (atom [])
           component (fn [k] 
-                      (reify java.io.Closable
+                      (reify java.io.Closeable
                         (close [_] (swap! close-order conj k))))
           sys (system-map {:a (component :a) :b (fnk [a] (component :b))})]
       (:b sys)
