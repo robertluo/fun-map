@@ -23,7 +23,7 @@
 (defprotocol Closeable
   (close [this]))
 
-(extend-protocol Closable
+(extend-protocol Closeable
   java.io.Closeable
   (close [this]
     (.close this)))
