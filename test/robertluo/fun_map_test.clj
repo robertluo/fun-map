@@ -57,4 +57,4 @@
           sys (system-map {:a (fnk [] (component :a)) :b (fnk [a] (component :b))})]
       (:b sys)
       (.close sys)
-      (is (= [:a :b] @close-order)))))
+      (is (= [:b :a] @close-order)))))
