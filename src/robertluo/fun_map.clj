@@ -42,7 +42,7 @@
                :trace-fn (fn [_ v] 
                            (when (satisfies? impl/Closeable v)
                              (swap! components conj v))))
-        halt-fn (fn [] (doseq [comp (reverse @components)]
+        halt-fn (fn [_] (doseq [comp (reverse @components)]
                          (impl/close comp)))]
       (vary-meta sys assoc ::impl/close-fn halt-fn)))
 
