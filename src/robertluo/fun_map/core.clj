@@ -20,8 +20,20 @@
     (val []
       (unwrap (proxy-super val) m))))
 
+(defprotocol Closable
+  (close [this]))
+
+(extend-protocol Closable
+  java.util.Closable
+  (close [this]
+    (.close this)))
+
 (defn delegate-map [wrap-fn ^APersistentMap m]
-  (proxy [APersistentMap clojure.lang.IObj] []
+  (proxy [APersistentMap clojure.lang.IObj java.util.Closable] []
+    (close []
+      (when-let [close-fn (some-> (.meta this) ::close-fn)]
+        (close-fn this)))
+    
     (meta []
       (.meta m))
 
