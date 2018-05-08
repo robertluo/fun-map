@@ -24,12 +24,12 @@
   (close [this]))
 
 (extend-protocol Closable
-  java.util.Closable
+  java.io.Closable
   (close [this]
     (.close this)))
 
 (defn delegate-map [wrap-fn ^APersistentMap m]
-  (proxy [APersistentMap clojure.lang.IObj java.util.Closable] []
+  (proxy [APersistentMap clojure.lang.IObj java.io.Closable] []
     (close []
       (when-let [close-fn (some-> (.meta this) ::close-fn)]
         (close-fn this)))
