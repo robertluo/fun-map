@@ -40,7 +40,7 @@
   (let [components (atom [])
         sys (fun-map m
                :trace-fn (fn [_ v] 
-                           (when (satisfies? impl/Closable v)
+                           (when (satisfies? impl/Closeable v)
                              (swap! components conj v))))
         halt-fn (fn [] (doseq [comp (reverse @components)]
                          (impl/close comp)))]
