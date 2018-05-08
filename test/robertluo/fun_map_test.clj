@@ -47,3 +47,14 @@
   (testing "when a function has :no-wrap meta, it will be stored as is"
     (is (= "ok"
           ((-> (fun-map {:a ^:no-wrap (fn [] "ok")}) :a))))))
+
+(deftest system-map-test
+  (testing "a system map will close its components in order"
+    (let [close-order (atom [])
+          component (fn [k] 
+                      (reify java.util.Closable
+                        (close [_] (swap! close-order conj k))))
+          sys (system-map {:a (component :a) :b (fnk [a] (component :b))})]
+      (:b sys)
+      (.close sys)
+      (is (= [:a :b] @close-order)))))
