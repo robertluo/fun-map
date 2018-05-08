@@ -23,8 +23,26 @@
 
 (defmacro fnk
   "a function with all its args take"
+  {:style/indent [:defn]}
   [args & body]
   `(with-meta
      (fn [{:keys ~args}]
        ~@body)
      {:wrap true}))
+
+(defn system-map
+  "returns a fun-map can be shutdown orderly.
+  
+   any value adapts Closable in this map will be considered as a 
+   component, it will be closed in reversed order of its invoking.
+   Notice only accessed components will be shutdown."
+  [m]
+  (let [components (atom [])
+        sys (fun-map m
+               :trace-fn (fn [_ v] 
+                           (when (satisfies? impl/Closable v)
+                             (swap! components conj v))))
+        halt-fn (fn [] (doseq [comp (reverse @components)]
+                         (impl/close comp)))]
+      (vary-meta sys assoc ::impl/close-fn halt-fn)))
+
