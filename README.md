@@ -96,8 +96,8 @@ In above example, the invocations is ordered, so it can be used in a scenario li
  
  (touch system) ;;start the system
  (.close system)
- ;;halt :a
  ;;halt :b
+ ;;halt :a
 ```
 
 ## License
