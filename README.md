@@ -75,7 +75,7 @@ Fun-map also can be nested, so you could `get-in` or `update-in`.
 
 ### Trace the function calls
 
-Accessing values of fun-map can be traced, which is very useful for logging, debugging and make it a extremely lightweight (< 100 LOC now) life cycle system.
+Accessing values of fun-map can be traced, which is very useful for logging, debugging and make it an extremely lightweight (< 100 LOC now) life cycle system.
 
 ```clojure
 (def invocations (atom []))
