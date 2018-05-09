@@ -30,19 +30,31 @@
        ~@body)
      {:wrap true}))
 
-(defn system-map
+;;;;;; life cycle map
+
+(defprotocol Haltable
+  "Life cycle protocol, signature just like java.io.Closeable,
+  being a protocol gives user ability to extend"
+  (halt! [this]))
+
+;; make it compatible with java.io.Closeable
+(extend-protocol Haltable
+  java.io.Closeable
+  (halt! [this]
+    (.close this)))
+
+(defn life-cycle-map
   "returns a fun-map can be shutdown orderly.
-  
-   any value adapts Closable in this map will be considered as a 
+
+   any value supports `Closeable` in this map will be considered as a
    component, it will be closed in reversed order of its invoking.
    Notice only accessed components will be shutdown."
   [m]
   (let [components (atom [])
-        sys (fun-map m
-               :trace-fn (fn [_ v] 
-                           (when (satisfies? impl/Closeable v)
-                             (swap! components conj v))))
-        halt-fn (fn [_] (doseq [comp (reverse @components)]
-                         (impl/close comp)))]
+        sys        (fun-map m
+                            :trace-fn (fn [_ v]
+                                        (when (satisfies? Haltable v)
+                                          (swap! components conj v))))
+        halt-fn    (fn [_] (doseq [component (reverse @components)]
+                             (halt! component)))]
       (vary-meta sys assoc ::impl/close-fn halt-fn)))
-

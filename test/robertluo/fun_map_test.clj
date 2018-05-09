@@ -43,18 +43,19 @@
       (is (= [[:b 6] [:c 7]]
              @traced)))))
 
-(deftest no-wrap-test
-  (testing "when a function has :no-wrap meta, it will be stored as is"
+(deftest normal-function-value-test
+  (testing "when a function hasn't :wrap meta, it will be stored as is"
     (is (= "ok"
-          ((-> (fun-map {:a ^:no-wrap (fn [] "ok")}) :a))))))
+          ((-> (fun-map {:a (fn [] "ok")}) :a))))))
 
-(deftest system-map-test
-  (testing "a system map will close its components in order"
+(deftest life-cycle-map-test
+  (testing "a life cycle map will halt! its components in order"
     (let [close-order (atom [])
-          component (fn [k] 
-                      (reify java.io.Closeable
-                        (close [_] (swap! close-order conj k))))
-          sys (system-map {:a (fnk [] (component :a)) :b (fnk [a] (component :b))})]
+          component (fn [k]
+                      (reify Haltable
+                        (halt! [_] (swap! close-order conj k))))
+          sys (life-cycle-map
+               {:a (fnk [] (component :a)) :b (fnk [a] (component :b))})]
       (:b sys)
       (.close sys)
       (is (= [:b :a] @close-order)))))

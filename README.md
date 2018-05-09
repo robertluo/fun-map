@@ -2,6 +2,8 @@
 
 [![Build Status](https://travis-ci.org/robertluo/fun-map.svg?branch=master)](https://travis-ci.org/robertluo/fun-map)
 
+[![Clojars Project](https://img.shields.io/clojars/v/robertluo/fun-map.svg)](https://clojars.org/robertluo/fun-map)
+
 In clojure, code is data, the fun-map turns value fetching function call into map value accessing.
 
 For example, when we store a delay as a value inside a map, we may want to retrieve the value wrapped inside, not the delayed object itself, i.e. a `deref` automatically be called when accessed by map's key. This way, we can treat it as if it is a plain map, without the time difference of when you store and when you retrieve. There are libraries exist for this purpose commonly known as *lazy map*.
@@ -18,12 +20,12 @@ One common thing in above scenarios is that if we store something in a map as a 
 
 ### Simplest scenarios
 
-As a lazy map without `delay`, because a function is only be called when accessed.
+Any value implements `clojure.lang.IDeref` interface in a fun-map will automatically `deref` when accessed by its key. In fact, it will be a *deep deref*, keeps `deref` until it reaches a none ref value.
 
 ```clojure
 (require '[robertluo.fun-map :refer [fun-map fnk touch]])
 
-(def m (fun-map {:a 4 :b (fnk [_] (println "accessing :b") 10)}))
+(def m (fun-map {:a 4 :b (delay (println "accessing :b") 10)}))
 
 (:b m)
 
@@ -50,6 +52,8 @@ Or future objects as values that will be accessed at same time.
 
 A function in fun-map and has `:wrap` meta as `true` takes the map itself as the argument, return value will be *unwrapped* when accessed by key.
 
+`fnk` macro will be handy in many cases, it destructs args from the map, and set the `:wrap` meta.
+
 ```clojure
 (def m (fun-map {:xs (range 10)
                  :count-keys ^:wrap (fn [m] (count (keys m)))
@@ -63,9 +67,15 @@ A function in fun-map and has `:wrap` meta as `true` takes the map itself as the
 ;;=> 5
 ```
 
+Notice the above example looks like a prismatic graph, with the difference that a fun-map remains a map, so it can be composed like a map, like `merge` with other map, `assoc` plain value, etc.
+
+Though you should watch out that fun-map does not compute dependencies of keys and the function in a value will just be invoked once, re-assoc a value will not cause its dependents re-invoke.
+
+Fun-map also can be nested, so you could `get-in` or `update-in`.
+
 ### Trace the function calls
 
-Instead of statically compiled, invocation of fun-map's function can be traced.
+Accessing values of fun-map can be traced, which is very useful for logging, debugging and make it a extremely lightweight (< 100 LOC now) life cycle system.
 
 ```clojure
 (def invocations (atom []))
@@ -78,27 +88,32 @@ Instead of statically compiled, invocation of fun-map's function can be traced.
 ;;=> [[:b 4] [:c 5]]
 ```
 
-### System map for orderred shutdown
+### Life cycle map for orderred shutdown
 
-In above example, the invocations is ordered, so it can be used in a scenario like a dependency graph.
+Using above trace feature, it is very easy to support a common scenario of [components](http://thinkrelevance.com/blog/2013/06/04/clojure-workflow-reloaded). The starting of components is simply accessing them by name, `life-cycle-map` will make it haltable (implemented `java.io.Closeable` also) by reverse its starting order.
 
 ```clojure
-(def system 
-  (system-map 
-    {:a (fnk [] 
-          (reify java.io.Closeable
-            (close [_]
-              (println "halt :a"))))
-     :b (fnk [a]
-          (reify java.io.Closeable
-            (close [_]
-              (println "halt :b"))))}))
- 
- (touch system) ;;start the system
- (.close system)
+(def system
+  (life-cycle-map
+    {:component/a
+    (fnk []
+      (reify java.io.Closeable
+        (close [_]
+          (println "halt :a"))))
+     :component/b
+     (fnk [:component/a]
+       (reify java.io.Closeable
+         (close [_]
+           (println "halt :b"))))}))
+
+ (touch system) ;;start the entire system, you may also just start part of system
+ (halt! system)
  ;;halt :b
  ;;halt :a
 ```
+
+`robertluo.fun-map.Haltable` protocol can be extended to your type of component, or you can implements `java.io.Closeable` interface to indicate it is a life cycle component.
+
 
 ## License
 

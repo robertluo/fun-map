@@ -2,4 +2,4 @@ image: clojure
 
 build:
   script:
-    - lein test
+    - lein do test, eastwood

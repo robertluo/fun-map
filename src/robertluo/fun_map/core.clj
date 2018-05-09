@@ -20,20 +20,15 @@
     (val []
       (unwrap (proxy-super val) m))))
 
-(defprotocol Closeable
-  (close [this]))
-
-(extend-protocol Closeable
-  java.io.Closeable
-  (close [this]
-    (.close this)))
+;; a marker interface for fun-map
+(definterface FunMap)
 
 (defn delegate-map [wrap-fn ^APersistentMap m]
-  (proxy [APersistentMap clojure.lang.IObj java.io.Closeable] []
+  (proxy [APersistentMap clojure.lang.IObj java.io.Closeable FunMap] []
     (close []
       (when-let [close-fn (some-> (.meta this) ::close-fn)]
         (close-fn this)))
-    
+
     (meta []
       (.meta m))
 
