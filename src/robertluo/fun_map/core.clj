@@ -42,7 +42,9 @@
       ([k]
        (some-> (.entryAt this k) (.val)))
       ([k not-found]
-       (or (.valAt this k) not-found)))
+       (if (.containsKey this k)
+         (.valAt this k)
+         not-found)))
 
     (entryAt [k]
       (when (.containsKey m k)
