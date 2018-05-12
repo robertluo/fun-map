@@ -112,7 +112,7 @@ Using above trace feature, it is very easy to support a common scenario of [comp
  ;;halt :a
 ```
 
-`Haltable` protocol can be extended to your type of component, or you can implements `java.io.Closeable` interface to indicate it is a life cycle component.
+`Haltable` protocol can be extended to your type of component, or you can implement `java.io.Closeable` interface to indicate it is a life cycle component.
 
 
 ## License
