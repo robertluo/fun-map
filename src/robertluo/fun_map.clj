@@ -19,7 +19,7 @@
 (defn touch
   "forcefully evaluate all entries of a map"
   [m]
-  (doseq [[_ v] m] v)
+  (doseq [[_ _] m] nil)
   m)
 
 (defmacro fnk
