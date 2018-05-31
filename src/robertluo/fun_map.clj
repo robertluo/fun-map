@@ -19,11 +19,13 @@
 (defn touch
   "forcefully evaluate all entries of a map"
   [m]
-  (select-keys m (keys m)))
+  (doseq [[_ v] m] v)
+  m)
 
 (defmacro fnk
-  "a function with all its args take"
-  {:style/indent [:defn]}
+  "a function with all its args taken from a map, args are the
+  values of corresponding keys by args' name"
+  {:style/indent 1}
   [args & body]
   `(with-meta
      (fn [{:keys ~args}]

@@ -59,3 +59,13 @@
       (:b sys)
       (.close sys)
       (is (= [:b :a] @close-order)))))
+
+(deftest touch-test
+  (testing "touching a fun-map will call all functions inside"
+    (let [far (atom 0)
+          inc-fn (fnk [] (swap! far inc))
+          m (-> (array-map :a inc-fn :b inc-fn)
+                fun-map
+                touch)]
+      (is (= 2 @far))
+      (is (= {:a 1 :b 2} m)))))
