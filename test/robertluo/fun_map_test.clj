@@ -27,7 +27,7 @@
 (deftest reassoc-test
   (testing "when reassoc value to fun-map, its function can be re-invoked"
     (is (= 11
-         (-> (fun-map {:a 2 :b (fnk [a] (inc a))}) (assoc :a 10) :b)))))
+           (-> (fun-map {:a 2 :b (fnk [a] (inc a))}) (assoc :a 10) :b)))))
 
 (deftest dref-test
   (testing "delay, future, delayed future value will be deref when accessed"
@@ -46,7 +46,7 @@
 (deftest normal-function-value-test
   (testing "when a function hasn't :wrap meta, it will be stored as is"
     (is (= "ok"
-          ((-> (fun-map {:a (fn [] "ok")}) :a))))))
+           ((-> (fun-map {:a (fn [] "ok")}) :a))))))
 
 (deftest life-cycle-map-test
   (testing "a life cycle map will halt! its components in order"
@@ -69,3 +69,12 @@
                 touch)]
       (is (= 2 @far))
       (is (= {:a 1 :b 2} m)))))
+
+(deftest lazy-merge-test
+  (testing "merge two fun-maps will keep vals lazily"
+    (let [marker  (atom 0)
+          a       (fun-map {:a (fnk [] (swap! marker inc))})
+          b       (fun-map {:b (fnk [a] (inc a))})
+          [m1 m2] [(merge a b) (merge b a)]]
+      (is (= 0 @marker))
+      (is (= {:a 1 :b 2} m1 m2)))))

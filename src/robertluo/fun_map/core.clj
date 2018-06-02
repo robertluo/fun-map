@@ -20,11 +20,14 @@
     (val []
       (unwrap (proxy-super val) m))))
 
-;; a marker interface for fun-map
-(definterface FunMap)
+(definterface IFunMap
+  (rawMap []))
 
 (defn delegate-map [wrap-fn ^APersistentMap m]
-  (proxy [APersistentMap clojure.lang.IObj java.io.Closeable FunMap] []
+  (proxy [APersistentMap clojure.lang.IObj java.io.Closeable IFunMap] []
+    (rawMap []
+      m)
+
     (close []
       (when-let [close-fn (some-> (.meta this) ::close-fn)]
         (close-fn this)))
@@ -72,6 +75,11 @@
             (.hasNext ite))
           (next [_]
             (wrapped-entry this (.next ite))))))
+
+    (cons [o]
+      (if (instance? IFunMap o)
+        (proxy-super cons (.rawMap ^IFunMap o))
+        (proxy-super cons o)))
 
     (seq []
       (clojure.lang.IteratorSeq/create (.iterator this)))))
