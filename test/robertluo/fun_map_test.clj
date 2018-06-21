@@ -70,11 +70,12 @@
       (is (= 2 @far))
       (is (= {:a 1 :b 2} m)))))
 
-(deftest lazy-merge-test
-  (testing "merge two fun-maps will keep vals lazily"
-    (let [marker  (atom 0)
-          a       (fun-map {:a (fnk [] (swap! marker inc))})
-          b       (fun-map {:b (fnk [a] (inc a))})
-          [m1 m2] [(merge a b) (merge b a)]]
-      (is (= 0 @marker))
-      (is (= {:a 1 :b 2} m1 m2)))))
+(deftest merge-trace-test
+  (testing "trace-fn should ok for merging"
+    (let [marker (atom {})
+          trace-f #(swap! marker assoc % %2)
+          a (fun-map {:a (fnk [] 0)} :trace-fn trace-f)
+          b (fun-map {:b (fnk [a] (inc a))})
+          a (touch (merge a b))]
+      (is (= {:a 0 :b 1} a))
+      (is (= {:a 0 :b 1} @marker)))))
