@@ -12,6 +12,8 @@
             APersistentMap]))
 
 (defprotocol ValueWrapper
+  (raw [this]
+    "returns the raw value of the wrapper")
   (unwrap [this m]
     "unwrap the real value from a wrapper"))
 
@@ -21,12 +23,12 @@
       (unwrap (proxy-super val) m))))
 
 (definterface IFunMap
-  (rawMap []))
+  (rawSeq []))
 
 (defn delegate-map [wrap-fn ^APersistentMap m]
   (proxy [APersistentMap clojure.lang.IObj java.io.Closeable IFunMap] []
-    (rawMap []
-      m)
+    (rawSeq []
+      (map (fn [[k v]] [k (raw v)]) m))
 
     (close []
       (when-let [close-fn (some-> (.meta this) ::close-fn)]
@@ -78,7 +80,7 @@
 
     (cons [o]
       (if (instance? IFunMap o)
-        (proxy-super cons (.rawMap ^IFunMap o))
+        (reduce (fn [acc [k v]] (assoc acc k (wrap-fn k v))) this (.rawSeq o))
         (proxy-super cons o)))
 
     (seq []
@@ -96,12 +98,18 @@
 
 (extend-protocol ValueWrapper
   Object
+  (raw [o]
+    o)
   (unwrap [o _]
     o)
   nil
+  (raw [o]
+    nil)
   (unwrap [_ _]
     nil)
   clojure.lang.IDeref
+  (raw [d]
+    d)
   (unwrap [d _]
     (loop [r d]
       (let [v (deref r)]
@@ -109,11 +117,13 @@
           (recur v)
           v)))))
 
-(deftype FunctionWrapper [v prom trace-fn]
+(deftype FunctionWrapper [f prom trace-fn]
   ValueWrapper
+  (raw [_]
+    f)
   (unwrap [_ m]
     (when-not (realized? prom)
-      (let [rv (v m)]
+      (let [rv (f m)]
         (deliver prom rv)
         (when trace-fn (trace-fn rv))))
     (deref prom)))
