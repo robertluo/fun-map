@@ -112,10 +112,9 @@
     d)
   (unwrap [d _]
     (loop [r d]
-      (let [v (deref r)]
-        (if (instance? clojure.lang.IDeref v)
-          (recur v)
-          v)))))
+      (if (instance? clojure.lang.IDeref r)
+        (recur (deref r))
+        r))))
 
 (deftype FunctionWrapper [f prom trace-fn]
   ValueWrapper
