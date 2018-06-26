@@ -9,12 +9,9 @@
   when put a function as a value in a fun-map, it will be invoked
   with the map itself and returns the value as the value
   when referred by the key associated, and only
-  be invoked once.
-
-  :trace-fn is a side effect function accept key, value as the
-   underlying function is really invoked"
-  [m & {:keys [trace-fn]}]
-  (impl/delegate-map* (partial impl/function-wrapper trace-fn) m))
+  be invoked once. "
+  [m]
+  (impl/delegate-map m))
 
 (defn touch
   "forcefully evaluate all entries of a map"
@@ -27,23 +24,11 @@
   values of corresponding keys by args' name"
   {:style/indent 1}
   [args & body]
-  `(with-meta
-     (fn [{:keys ~args}]
-       ~@body)
-     {:wrap true}))
+  `(impl/fn-wrapper
+    (fn [{:keys ~args}]
+      ~@body)))
 
 ;;;;;; life cycle map
-
-(defprotocol Haltable
-  "Life cycle protocol, signature just like java.io.Closeable,
-  being a protocol gives user ability to extend"
-  (halt! [this]))
-
-;; make it compatible with java.io.Closeable
-(extend-protocol Haltable
-  java.io.Closeable
-  (halt! [this]
-    (.close this)))
 
 (defn life-cycle-map
   "returns a fun-map can be shutdown orderly.
@@ -53,18 +38,12 @@
    Notice only accessed components will be shutdown."
   [m]
   (let [components (atom [])
-        sys        (fun-map m
-                            :trace-fn (fn [_ v]
-                                        (when (satisfies? Haltable v)
-                                          (swap! components conj v))))
-        halt-fn    (fn [_] (doseq [component (reverse @components)]
-                             (halt! component)))]
-      (vary-meta sys assoc ::impl/close-fn halt-fn)))
+        sys        (fun-map m)]))
 
 (defn closeable
   "returns a wrapped plain value, which implements IDref and Closeable,
    the close-fn is an effectual function with no argument.
    when used inside a life cycle map, its close-fn when get called when
    closing the map."
-  [value close-fn]
-  (impl/->CloseableValue value close-fn))
+  [r close-fn]
+  (impl/->CloseableRef r close-fn))

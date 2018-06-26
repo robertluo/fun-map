@@ -12,8 +12,6 @@
             APersistentMap]))
 
 (defprotocol ValueWrapper
-  (raw [this]
-    "returns the raw value of the wrapper")
   (unwrap [this m]
     "unwrap the real value from a wrapper"))
 
@@ -27,23 +25,15 @@
     (val []
       (deep-unwrap (proxy-super val) m))))
 
-(definterface IFunMap
-  (rawSeq []))
+(definterface IFunMap)
 
-(defn delegate-map [wrap-fn ^APersistentMap m]
-  (proxy [APersistentMap clojure.lang.IObj java.io.Closeable IFunMap] []
-    (rawSeq []
-      (map (fn [[k v]] [k (raw v)]) m))
-
-    (close []
-      (when-let [close-fn (some-> (.meta this) ::close-fn)]
-        (close-fn this)))
-
+(defn delegate-map [^APersistentMap m]
+  (proxy [APersistentMap clojure.lang.IObj IFunMap] []
     (meta []
       (.meta m))
 
     (withMeta [mdata]
-      (delegate-map wrap-fn (.withMeta m mdata)))
+      (delegate-map (.withMeta m mdata)))
 
     (containsKey [k]
       (.containsKey m k))
@@ -61,16 +51,16 @@
         (wrapped-entry this (.entryAt m k))))
 
     (assoc [k v]
-      (delegate-map wrap-fn (.assoc m k (wrap-fn k v))))
+      (delegate-map (.assoc m k v)))
 
     (assocEx [k v]
-      (delegate-map wrap-fn (.assocEx m k (wrap-fn k v))))
+      (delegate-map (.assocEx m k v)))
 
     (empty []
-      (delegate-map wrap-fn (.empty m)))
+      (delegate-map (.empty m)))
 
     (without [k]
-      (delegate-map wrap-fn (.dissoc m k)))
+      (delegate-map (.dissoc m k)))
 
     (count []
       (.count m))
@@ -83,53 +73,21 @@
           (next [_]
             (wrapped-entry this (.next ite))))))
 
-    (cons [o]
-      (if (instance? IFunMap o)
-        (reduce (fn [acc [k v]] (assoc acc k (wrap-fn k v))) this (.rawSeq o))
-        (proxy-super cons o)))
-
     (seq []
       (clojure.lang.IteratorSeq/create (.iterator this)))))
-
-(defn delegate-map*
-  "create a fun-map with wrapper-fn to wrap values of underlying m"
-  [wrapper-fn m]
-  (reduce-kv
-   (fn [acc k v] (assoc acc k v))
-   (delegate-map wrapper-fn (.empty m))
-   m))
 
 ;;;;;;;;;;;; Function wrapper
 
 (extend-protocol ValueWrapper
   clojure.lang.IDeref
-  (raw [d]
-    d)
   (unwrap [d _]
     (deref d)))
 
-(deftype FunctionWrapper [f prom trace-fn]
-  ValueWrapper
-  (raw [_]
-    f)
-  (unwrap [_ m]
-    (when-not (realized? prom)
-      (let [rv (f m)]
-        (deliver prom rv)
-        (when trace-fn (trace-fn rv))))
-    prom))
-
-(deftype CloseableValue [value close-fn]
-  clojure.lang.IDeref
-  (deref [_]
-    value)
-  java.io.Closeable
-  (close [_]
-    (close-fn)))
-
-(defn function-wrapper
-  "returns a FunctionWrapper wraps value v"
-  [trace-fn k v]
-  (if (and (fn? v) (some-> v meta :wrap))
-    (FunctionWrapper. v (promise) (when trace-fn (partial trace-fn k)))
-    v))
+(defn fn-wrapper [f]
+  (let [val (atom ::unrealized)]
+    (reify
+      ValueWrapper
+      (unwrap [_ m]
+        (when (= ::unrealized @val)
+          (reset! val (f m)))
+        val))))

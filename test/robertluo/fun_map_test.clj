@@ -34,6 +34,7 @@
     (is (= {:a 3 :b 4 :c 5}
            (fun-map {:a (delay 3) :b (future 4) :c (delay (future 5))})))))
 
+#_
 (deftest trace-map-test
   (testing "invocation record"
     (let [traced (atom [])
@@ -48,6 +49,7 @@
     (is (= "ok"
            ((-> (fun-map {:a (fn [] "ok")}) :a))))))
 
+#_
 (deftest life-cycle-map-test
   (testing "a life cycle map will halt! its components in order"
     (let [close-order (atom [])
@@ -63,13 +65,13 @@
 (deftest touch-test
   (testing "touching a fun-map will call all functions inside"
     (let [far (atom 0)
-          inc-fn (fnk [] (swap! far inc))
-          m (-> (array-map :a inc-fn :b inc-fn)
+          m (-> (array-map :a (fnk [] (swap! far inc)) :b (fnk [] (swap! far inc)))
                 fun-map
                 touch)]
       (is (= 2 @far))
       (is (= {:a 1 :b 2} m)))))
 
+#_
 (deftest merge-trace-test
   (testing "trace-fn should ok for merging"
     (let [marker (atom {})
@@ -80,6 +82,7 @@
       (is (= {:a 0 :b 1} a))
       (is (= {:a 0 :b 1} @marker)))))
 
+#_
 (deftest closeable-test
   (testing "put a closeable value into life cycle map will get closed"
     (let [marker (atom 0)

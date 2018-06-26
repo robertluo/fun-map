@@ -1,7 +1,6 @@
 # fun-map, one map for all code in map
 
 [![Build Status](https://travis-ci.org/robertluo/fun-map.svg?branch=master)](https://travis-ci.org/robertluo/fun-map)
-
 [![Clojars Project](https://img.shields.io/clojars/v/robertluo/fun-map.svg)](https://clojars.org/robertluo/fun-map)
 
 In clojure, code is data, the fun-map turns value fetching function call into map value accessing.
