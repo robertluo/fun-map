@@ -125,7 +125,7 @@
     value)
   java.io.Closeable
   (close [_]
-    (close-fn value)))
+    (close-fn)))
 
 (defn function-wrapper
   "returns a FunctionWrapper wraps value v"

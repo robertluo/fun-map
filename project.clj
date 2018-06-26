@@ -1,4 +1,4 @@
-(defproject robertluo/fun-map "0.1.7"
+(defproject robertluo/fun-map "0.1.8"
   :description "a map implementation full of fun"
   :min-lein-version "2.7.0"
   :license {:name "Eclipse Public License"
