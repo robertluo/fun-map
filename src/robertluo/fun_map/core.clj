@@ -117,7 +117,7 @@
       (let [rv (f m)]
         (deliver prom rv)
         (when trace-fn (trace-fn rv))))
-    (deref prom)))
+    prom))
 
 (deftype CloseableValue [value close-fn]
   clojure.lang.IDeref

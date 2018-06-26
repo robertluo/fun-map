@@ -61,5 +61,10 @@
                              (halt! component)))]
       (vary-meta sys assoc ::impl/close-fn halt-fn)))
 
-(defn closeable [value close-fn]
+(defn closeable
+  "returns a wrapped plain value, which implements IDref and Closeable,
+   the close-fn is an effectual function with no argument.
+   when used inside a life cycle map, its close-fn when get called when
+   closing the map."
+  [value close-fn]
   (impl/->CloseableValue value close-fn))
