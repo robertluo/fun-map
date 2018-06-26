@@ -114,6 +114,7 @@ Using above trace feature, it is very easy to support a common scenario of [comp
 
 `Haltable` protocol can be extended to your type of component, or you can implement `java.io.Closeable` interface to indicate it is a life cycle component.
 
+`closeable` function is very convenient this purpose, by wrapping any value and a close function (which takes no argument), the value will appear to be map entry's value, while the close function will get called when shutdown the life cycle map.
 
 ## License
 
