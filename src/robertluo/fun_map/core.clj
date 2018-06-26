@@ -17,10 +17,15 @@
   (unwrap [this m]
     "unwrap the real value from a wrapper"))
 
+(defn deep-unwrap [o m]
+  (if (satisfies? ValueWrapper o)
+    (recur (unwrap o m) m)
+    o))
+
 (defn wrapped-entry [m ^IMapEntry entry]
   (proxy [clojure.lang.MapEntry] [(.key entry) (.val entry)]
     (val []
-      (unwrap (proxy-super val) m))))
+      (deep-unwrap (proxy-super val) m))))
 
 (definterface IFunMap
   (rawSeq []))
@@ -97,24 +102,11 @@
 ;;;;;;;;;;;; Function wrapper
 
 (extend-protocol ValueWrapper
-  Object
-  (raw [o]
-    o)
-  (unwrap [o _]
-    o)
-  nil
-  (raw [o]
-    nil)
-  (unwrap [_ _]
-    nil)
   clojure.lang.IDeref
   (raw [d]
     d)
   (unwrap [d _]
-    (loop [r d]
-      (if (instance? clojure.lang.IDeref r)
-        (recur (deref r))
-        r))))
+    (deref d)))
 
 (deftype FunctionWrapper [f prom trace-fn]
   ValueWrapper
@@ -126,6 +118,14 @@
         (deliver prom rv)
         (when trace-fn (trace-fn rv))))
     (deref prom)))
+
+(deftype CloseableValue [value close-fn]
+  clojure.lang.IDeref
+  (deref [_]
+    value)
+  java.io.Closeable
+  (close [_]
+    (close-fn value)))
 
 (defn function-wrapper
   "returns a FunctionWrapper wraps value v"

@@ -79,3 +79,12 @@
           a (touch (merge a b))]
       (is (= {:a 0 :b 1} a))
       (is (= {:a 0 :b 1} @marker)))))
+
+(deftest closeable-test
+  (testing "put a closeable value into life cycle map will get closed"
+    (let [marker (atom 0)
+          m (touch (life-cycle-map
+                    {:a (fnk [] (closeable 3 (fn [_] (swap! marker inc))))}))]
+      (is (= {:a 3} m))
+      (halt! m)
+      (is (= 1 @marker)))))

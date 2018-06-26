@@ -60,3 +60,6 @@
         halt-fn    (fn [_] (doseq [component (reverse @components)]
                              (halt! component)))]
       (vary-meta sys assoc ::impl/close-fn halt-fn)))
+
+(defn closeable [value close-fn]
+  (impl/->CloseableValue value close-fn))
