@@ -92,29 +92,25 @@ Accessing values of fun-map can be traced, which is very useful for logging, deb
 
 Using above trace feature, it is very easy to support a common scenario of [components](http://thinkrelevance.com/blog/2013/06/04/clojure-workflow-reloaded). The starting of components is simply accessing them by name, `life-cycle-map` will make it haltable (implemented `java.io.Closeable` also) by reverse its starting order.
 
+`closeable` function is very convenient this purpose, by wrapping any value and a close function (which takes no argument), the value will appear to be map entry's value, while the close function will get called when shutting down the life cycle map.
+
 ```clojure
 (def system
   (life-cycle-map
     {:component/a
-    (fnk []
-      (reify java.io.Closeable
-        (close [_]
-          (println "halt :a"))))
+     (fnk []
+       (closeable 100 #(println "halt :a")))
      :component/b
      (fnk [:component/a]
-       (reify java.io.Closeable
-         (close [_]
-           (println "halt :b"))))}))
+       (closeable (inc a) #(println "halt :b")))}))
 
- (touch system) ;;start the entire system, you may also just start part of system
+ (touch system) ;;start the entire system, you may also just start part of system, and the system is {:component/a 100 :component/b 101}
  (halt! system)
  ;;halt :b
  ;;halt :a
 ```
 
 `Haltable` protocol can be extended to your type of component, or you can implement `java.io.Closeable` interface to indicate it is a life cycle component.
-
-`closeable` function is very convenient this purpose, by wrapping any value and a close function (which takes no argument), the value will appear to be map entry's value, while the close function will get called when shutdown the life cycle map.
 
 ## License
 
