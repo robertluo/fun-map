@@ -83,11 +83,20 @@
   (unwrap [d _]
     (deref d)))
 
+(deftype FunctionWrapper [val f]
+  ValueWrapper
+  (unwrap [_ m]
+    (when (= ::unrealized @val)
+      (reset! val (f m)))
+    val))
+
 (defn fn-wrapper [f]
-  (let [val (atom ::unrealized)]
-    (reify
-      ValueWrapper
-      (unwrap [_ m]
-        (when (= ::unrealized @val)
-          (reset! val (f m)))
-        val))))
+  (->FunctionWrapper (atom ::unrealized) f))
+
+(deftype CloseableValue [value close-fn]
+  clojure.lang.IDeref
+  (deref [_]
+    value)
+  java.io.Closeable
+  (close [_]
+    (close-fn)))

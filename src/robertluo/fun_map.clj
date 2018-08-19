@@ -46,4 +46,4 @@
    when used inside a life cycle map, its close-fn when get called when
    closing the map."
   [r close-fn]
-  (impl/->CloseableRef r close-fn))
+  (impl/->CloseableValue r close-fn))
