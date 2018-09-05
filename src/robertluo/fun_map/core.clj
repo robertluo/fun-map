@@ -12,18 +12,18 @@
             APersistentMap]))
 
 (defprotocol ValueWrapper
-  (unwrap [this m]
-    "unwrap the real value from a wrapper"))
+  (unwrap [this m k]
+    "unwrap the real value from a wrapper on the key of k"))
 
-(defn deep-unwrap [o m]
+(defn deep-unwrap [o m k]
   (if (satisfies? ValueWrapper o)
-    (recur (unwrap o m) m)
+    (recur (unwrap o m k) m k)
     o))
 
 (defn wrapped-entry [m ^IMapEntry entry]
   (proxy [clojure.lang.MapEntry] [(.key entry) (.val entry)]
     (val []
-      (deep-unwrap (proxy-super val) m))))
+      (deep-unwrap (proxy-super val) m (.key this)))))
 
 (definterface IFunMap)
 
@@ -80,18 +80,20 @@
 
 (extend-protocol ValueWrapper
   clojure.lang.IDeref
-  (unwrap [d _]
+  (unwrap [d _ _]
     (deref d)))
 
-(deftype FunctionWrapper [val f]
+(deftype FunctionWrapper [val trace-fn f]
   ValueWrapper
-  (unwrap [_ m]
+  (unwrap [_ m k]
     (when (= ::unrealized @val)
-      (reset! val (f m)))
+      (let [v (f m)]
+        (reset! val v)
+        (and trace-fn (trace-fn k v))))
     val))
 
-(defn fn-wrapper [f]
-  (->FunctionWrapper (atom ::unrealized) f))
+(defn fn-wrapper [f trace-fn]
+  (->FunctionWrapper (atom ::unrealized) trace-fn f))
 
 (deftype CloseableValue [value close-fn]
   clojure.lang.IDeref

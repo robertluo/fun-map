@@ -34,13 +34,14 @@
     (is (= {:a 3 :b 4 :c 5}
            (fun-map {:a (delay 3) :b (future 4) :c (delay (future 5))})))))
 
-#_
 (deftest trace-map-test
   (testing "invocation record"
     (let [traced (atom [])
-          m (fun-map {:a 5 :b (fnk [a] (inc a)) :c (fnk [b] (inc b))}
-                     :trace-fn #(swap! traced conj [%1 %2]))
-          _ (:c m)]
+          trace-fn (fn [k v] (swap! traced conj [k v]))
+          m (fun-map {:a 5
+                      :b (wrap-f (fn [{:keys [a]}] (inc a)) trace-fn)
+                      :c (wrap-f (fn [{:keys [b]}] (inc b)) trace-fn)})]
+      (is (= {:a 5 :b 6 :c 7} m))
       (is (= [[:b 6] [:c 7]]
              @traced)))))
 

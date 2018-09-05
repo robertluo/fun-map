@@ -10,7 +10,7 @@
   with the map itself and returns the value as the value
   when referred by the key associated, and only
   be invoked once. "
-  [m]
+  [m & {:keys [trace-fn]}]
   (impl/delegate-map m))
 
 (defn touch
@@ -19,12 +19,21 @@
   (doseq [[_ _] m] nil)
   m)
 
+(defn wrap-f
+  "Wrap a function f and returns a wrapper to be used as a value
+  in fun-map, f should accept fun-map as its single argument, its return
+  value can be accessed by its key"
+  ([f]
+   (wrap-f f nil))
+  ([f trace-fn]
+   (impl/fn-wrapper f trace-fn)))
+
 (defmacro fnk
   "a function with all its args taken from a map, args are the
   values of corresponding keys by args' name"
   {:style/indent 1}
   [args & body]
-  `(impl/fn-wrapper
+  `(wrap-f
     (fn [{:keys ~args}]
       ~@body)))
 
@@ -38,7 +47,8 @@
    Notice only accessed components will be shutdown."
   [m]
   (let [components (atom [])
-        sys        (fun-map m)]))
+        sys        (fun-map m)]
+    sys))
 
 (defn closeable
   "returns a wrapped plain value, which implements IDref and Closeable,
