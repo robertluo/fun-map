@@ -25,12 +25,20 @@
     (val []
       (deep-unwrap (proxy-super val) m (.key this)))))
 
-(definterface IFunMap)
+(definterface IFunMap
+  (rawSeq []))
 
 (defn delegate-map [^APersistentMap m]
-  (proxy [APersistentMap clojure.lang.IObj IFunMap] []
+  (proxy [APersistentMap clojure.lang.IObj IFunMap java.io.Closeable] []
     (meta []
       (.meta m))
+
+    (rawSeq []
+      (.seq m))
+
+    (close []
+      (when-let [close-fn (some-> (.meta this) ::close-fn)]
+        (close-fn this)))
 
     (withMeta [mdata]
       (delegate-map (.withMeta m mdata)))
@@ -73,6 +81,10 @@
           (next [_]
             (wrapped-entry this (.next ite))))))
 
+    (cons [o]
+      (if (instance? IFunMap o)
+        (proxy-super cons (if (instance? IFunMap o) (.rawSeq ^IFunMap o) o))))
+
     (seq []
       (clojure.lang.IteratorSeq/create (.iterator this)))))
 
@@ -89,7 +101,8 @@
     (when (= ::unrealized @val)
       (let [v (f m)]
         (reset! val v)
-        (and trace-fn (trace-fn k v))))
+        (when-let [trace-fn (or trace-fn (-> m meta ::trace))]
+          (trace-fn k v))))
     val))
 
 (defn fn-wrapper [f trace-fn]

@@ -11,7 +11,9 @@
   when referred by the key associated, and only
   be invoked once. "
   [m & {:keys [trace-fn]}]
-  (impl/delegate-map m))
+  (with-meta
+    (impl/delegate-map m)
+    {::impl/trace trace-fn}))
 
 (defn touch
   "forcefully evaluate all entries of a map"
@@ -28,6 +30,13 @@
   ([f trace-fn]
    (impl/fn-wrapper f trace-fn)))
 
+(defmacro fw
+  "define an anonymous function in place and wrap it as a value"
+  [args & body]
+  `(wrap-f
+    (fn [~args]
+      ~@body)))
+
 (defmacro fnk
   "a function with all its args taken from a map, args are the
   values of corresponding keys by args' name"
@@ -39,6 +48,17 @@
 
 ;;;;;; life cycle map
 
+(defprotocol Haltable
+  "Life cycle protocol, signature just like java.io.Closeable,
+  being a protocol gives user ability to extend"
+  (halt! [this]))
+
+;; make it compatible with java.io.Closeable
+(extend-protocol Haltable
+  java.io.Closeable
+  (halt! [this]
+    (.close this)))
+
 (defn life-cycle-map
   "returns a fun-map can be shutdown orderly.
 
@@ -47,8 +67,14 @@
    Notice only accessed components will be shutdown."
   [m]
   (let [components (atom [])
-        sys        (fun-map m)]
-    sys))
+        sys        (fun-map m
+                            :trace-fn (fn [_ v]
+                                        (when (satisfies? Haltable v)
+                                          (swap! components conj v))))
+        halt-fn (fn [_]
+                  (doseq [component (reverse @components)]
+                    (halt! component)))]
+    (vary-meta sys assoc ::impl/close-fn halt-fn)))
 
 (defn closeable
   "returns a wrapped plain value, which implements IDref and Closeable,

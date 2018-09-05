@@ -19,7 +19,8 @@
       (is (= {:a 3 :b 4} m))))
 
   (testing "merge fun-map with another map"
-    (is (= {:a 3 :b 4} (merge (fun-map {:a 3}) {:b (fnk [a] (inc a))}))))
+    (is (= {:a 3 :b 4} (merge (fun-map {:a (fnk [] 3)})
+                              (fun-map {:b (fnk [a] (inc a))})))))
 
   (testing "meta data support"
     (is (= {:msg "ok"} (meta (with-meta (fun-map {:a 3}) {:msg "ok"}))))))
@@ -37,10 +38,10 @@
 (deftest trace-map-test
   (testing "invocation record"
     (let [traced (atom [])
-          trace-fn (fn [k v] (swap! traced conj [k v]))
-          m (fun-map {:a 5
-                      :b (wrap-f (fn [{:keys [a]}] (inc a)) trace-fn)
-                      :c (wrap-f (fn [{:keys [b]}] (inc b)) trace-fn)})]
+          m      (fun-map {:a 5
+                           :b (fnk [a] (inc a))
+                           :c (fnk [b] (inc b))}
+                          :trace-fn (fn [k v] (swap! traced conj [k v])))]
       (is (= {:a 5 :b 6 :c 7} m))
       (is (= [[:b 6] [:c 7]]
              @traced)))))
@@ -50,15 +51,14 @@
     (is (= "ok"
            ((-> (fun-map {:a (fn [] "ok")}) :a))))))
 
-#_
 (deftest life-cycle-map-test
   (testing "a life cycle map will halt! its components in order"
     (let [close-order (atom [])
-          component (fn [k]
-                      (reify Haltable
-                        (halt! [_] (swap! close-order conj k))))
-          sys (life-cycle-map
-               {:a (fnk [] (component :a)) :b (fnk [a] (component :b))})]
+          component   (fn [k]
+                        (closeable nil
+                          (fn [] (swap! close-order conj k))))
+          sys         (life-cycle-map
+                       {:a (fnk [] (component :a)) :b (fnk [a] (component :b))})]
       (:b sys)
       (.close sys)
       (is (= [:b :a] @close-order)))))
@@ -66,29 +66,32 @@
 (deftest touch-test
   (testing "touching a fun-map will call all functions inside"
     (let [far (atom 0)
-          m (-> (array-map :a (fnk [] (swap! far inc)) :b (fnk [] (swap! far inc)))
-                fun-map
-                touch)]
+          m   (-> (array-map :a (fnk [] (swap! far inc)) :b (fnk [] (swap! far inc)))
+                  fun-map
+                  touch)]
       (is (= 2 @far))
       (is (= {:a 1 :b 2} m)))))
 
-#_
 (deftest merge-trace-test
   (testing "trace-fn should ok for merging"
-    (let [marker (atom {})
+    (let [marker  (atom {})
           trace-f #(swap! marker assoc % %2)
-          a (fun-map {:a (fnk [] 0)} :trace-fn trace-f)
-          b (fun-map {:b (fnk [a] (inc a))})
-          a (touch (merge a b))]
+          a       (fun-map {:a (fnk [] 0)} :trace-fn (fn [k v] (swap! marker conj [k v])))
+          b       (fun-map {:b (fnk [a] (inc a))})
+          a       (merge a b)]
       (is (= {:a 0 :b 1} a))
       (is (= {:a 0 :b 1} @marker)))))
 
-#_
 (deftest closeable-test
   (testing "put a closeable value into life cycle map will get closed"
     (let [marker (atom 0)
-          m (touch (life-cycle-map
-                    {:a (fnk [] (closeable 3 #(swap! marker inc)))}))]
+          m      (touch (life-cycle-map
+                         {:a (fnk [] (closeable 3 #(swap! marker inc)))}))]
       (is (= {:a 3} m))
       (halt! m)
       (is (= 1 @marker)))))
+
+(deftest fw-test
+  (testing "fw macro using normal destructure syntax to define wrapper"
+    (is (= {:a 3 :b 5}
+           (fun-map {:a (fw {} 3) :b (fw {:keys [a]} (+ a 2))})))))
