@@ -28,10 +28,13 @@
   ([f]
    (wrap-f f nil))
   ([f trace-fn]
-   (impl/fn-wrapper f trace-fn)))
+   (wrap-f f trace-fn nil))
+  ([f trace-fn focus-fn]
+   (impl/fn-wrapper f trace-fn focus-fn)))
 
 (defmacro fw
   "define an anonymous function in place and wrap it as a value"
+  {:style/indent 1}
   [args & body]
   `(wrap-f
     (fn [~args]
@@ -44,7 +47,9 @@
   [args & body]
   `(wrap-f
     (fn [{:keys ~args}]
-      ~@body)))
+      ~@body)
+    nil
+    #(select-keys % ~(mapv keyword args))))
 
 ;;;;;; life cycle map
 

@@ -95,18 +95,28 @@
   (unwrap [d _ _]
     (deref d)))
 
-(deftype FunctionWrapper [val trace-fn f]
+(deftype FunctionWrapper [val focus-val trace-fn focus-fn f]
   ValueWrapper
   (unwrap [_ m k]
-    (when (= ::unrealized @val)
-      (let [v (f m)]
-        (reset! val v)
-        (when-let [trace-fn (or trace-fn (-> m meta ::trace))]
-          (trace-fn k v))))
+    (let [run
+          (fn [new-focus-val]
+            (let [v (f m)]
+              (reset! val v)
+              (and focus-fn (reset! focus-val new-focus-val))
+              (when-let [trace-fn (or trace-fn (-> m meta ::trace))]
+                (trace-fn k v))))
+          new-focus-val (and focus-fn (focus-fn m))]
+      (when (or (= ::unrealized @val) (not= new-focus-val @focus-val))
+        (run new-focus-val)))
     val))
 
-(defn fn-wrapper [f trace-fn]
-  (->FunctionWrapper (atom ::unrealized) trace-fn f))
+(defn fn-wrapper [f trace-fn focus-fn]
+  (->FunctionWrapper
+    (atom ::unrealized)
+    (atom nil)
+    trace-fn
+    focus-fn
+    f))
 
 (deftype CloseableValue [value close-fn]
   clojure.lang.IDeref

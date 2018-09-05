@@ -95,3 +95,11 @@
   (testing "fw macro using normal destructure syntax to define wrapper"
     (is (= {:a 3 :b 5}
            (fun-map {:a (fw {} 3) :b (fw {:keys [a]} (+ a 2))})))))
+
+(deftest fnk-focus-test
+  (testing "fnk automatically focus on its dependencies, re-run when dependencies change"
+    (let [input (atom 5)
+          a (fun-map {:a input :b (fnk [a] (* a 2))})]
+      (touch a)
+      (reset! input 7)
+      (is (= 14 (:b a))))))
