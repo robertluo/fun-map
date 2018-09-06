@@ -33,7 +33,21 @@
    (impl/fn-wrapper f trace-fn focus-fn)))
 
 (defmacro fw
-  "define an anonymous function in place and wrap it as a value"
+  "Define an anonymous function in place to be used in fun-map.
+  When accessed by key, it will be called with the map itself. So the arg-map
+  is a map following clojure's destructure syntax with two additional optional
+  keys:
+
+   - :focus A form that will be called to check if the function itself need
+     to be called. It must be pure functional and very quick.
+   - :trace A trace function, if the value updated, it will be called with key
+     and the vale.
+
+  Example:
+    (fw {:keys [a b] :as m
+         :trace (fn [k v] (println k v))
+         :focus (select-keys m [:a :b])}
+      (+ a b))"
   {:style/indent 1}
   [arg-map & body]
   (let [{:keys [trace focus]} arg-map
@@ -45,15 +59,15 @@
       ~(when focus `(fn [~arg-map] ~focus)))))
 
 (defmacro fnk
-  "a function with all its args taken from a map, args are the
-  values of corresponding keys by args' name"
+  "Define an anonymous function intended to use in fun-map.
+  Its arguments will be take from the corresponding keys of the map, and
+  the value will be changed when its dependencies change."
   {:style/indent 1}
   [args & body]
   `(fw {:keys  ~args
         :as    m#
         :focus (select-keys m# ~(mapv keyword args))}
      ~@body))
-
 
 ;;;;;; life cycle map
 
