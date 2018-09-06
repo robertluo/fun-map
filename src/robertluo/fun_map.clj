@@ -35,21 +35,25 @@
 (defmacro fw
   "define an anonymous function in place and wrap it as a value"
   {:style/indent 1}
-  [args & body]
-  `(wrap-f
-    (fn [~args]
-      ~@body)))
+  [arg-map & body]
+  (let [{:keys [trace focus]} arg-map
+        arg-map (dissoc arg-map :trace :focus)]
+    `(wrap-f
+      (fn [~arg-map]
+        ~@body)
+      ~(when trace trace)
+      ~(when focus `(fn [~arg-map] ~focus)))))
 
 (defmacro fnk
   "a function with all its args taken from a map, args are the
   values of corresponding keys by args' name"
   {:style/indent 1}
   [args & body]
-  `(wrap-f
-    (fn [{:keys ~args}]
-      ~@body)
-    nil
-    #(select-keys % ~(mapv keyword args))))
+  `(fw {:keys  ~args
+        :as    m#
+        :focus (select-keys m# ~(mapv keyword args))}
+     ~@body))
+
 
 ;;;;;; life cycle map
 
