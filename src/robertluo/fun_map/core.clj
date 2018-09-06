@@ -95,25 +95,24 @@
   (unwrap [d _ _]
     (deref d)))
 
-(deftype FunctionWrapper [val focus-val trace-fn focus-fn f]
+(deftype FunctionWrapper [a-val-pair trace-fn focus-fn f]
   ValueWrapper
   (unwrap [_ m k]
     (let [run
           (fn [new-focus-val]
-            (let [v (f m)]
-              (reset! val v)
-              (and focus-fn (reset! focus-val new-focus-val))
+            (let [[new-val] (swap! a-val-pair (fn [_] [(f m) new-focus-val]))]
               (when-let [trace-fn (or trace-fn (-> m meta ::trace))]
-                (trace-fn k v))))
-          new-focus-val (and focus-fn (focus-fn m))]
-      (when (or (= ::unrealized @val) (not= new-focus-val @focus-val))
-        (run new-focus-val)))
-    val))
+                (trace-fn k new-val))
+              new-val))
+          [val focus-val] @a-val-pair
+          new-focus-val (if focus-fn (focus-fn m) ::unrealized)]
+      (if (or (= ::unrealized val) (not= new-focus-val focus-val))
+        (run new-focus-val)
+        val))))
 
 (defn fn-wrapper [f trace-fn focus-fn]
   (->FunctionWrapper
-    (atom ::unrealized)
-    (atom nil)
+   (atom [::unrealized ::unrealized])
     trace-fn
     focus-fn
     f))
