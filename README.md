@@ -28,7 +28,7 @@
 
 ;; Showcase for compose steps later
 
-(def m (assoc m :num (range 101) :number (fnk [num] (filter #(< % 50) num))))
+(def m (assoc m :num (range 101) :numbers (fnk [num] (filter #(< % 50) num))))
 (:average m) ;=> 24.5
 ```
 
