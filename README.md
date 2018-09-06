@@ -16,15 +16,15 @@
             :sum     (fnk [numbers] (reduce + 0 numbers))
             :average (fnk [cnt sum] (float (/ sum cnt)))}))
                  
-(:average (assoc m :numbers [3 9 8 10 20]))) ;=> 10 
+(:average (assoc m :numbers [3 9 8 10 20])) ;=> 10.0
 
 ;; Showcase for lazily update pattern
 
 (def numbers (atom [0]))
 (def m (assoc m :numbers numbers))
-(:average m) ;=> 0
-(reset! numbers [3 9 8 10 20])
-(:average m) ;=> 10
+(:average m) ;=> 0.0
+(reset! numbers (range 101))
+(:average m) ;=> 50.0
 ```
 
 ## Rationale
