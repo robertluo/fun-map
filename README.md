@@ -28,8 +28,17 @@
 
 ;; Showcase for compose steps later
 
-(def m (assoc m :num (range 101) :numbers (fnk [num] (filter #(< % 50) num))))
+(def m (merge m {:num (range 101) :numbers (fnk [num] (filter #(< % 50) num))}))
 (:average m) ;=> 24.5
+
+;; Showcase for system life cycle
+(def system
+  "system wide data and components"
+  (life-cycle-map
+    {:config (fnk [file-name] (-> (io/file file-name) slurp clojure.edn/read-string))
+     :event-channel (fnk [[:config :channel :buffer]] 
+                     (let [ch (async/chan buffer)] 
+                       (closeable async/close ch))))
 ```
 
 ## Rationale
