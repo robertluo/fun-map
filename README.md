@@ -3,6 +3,32 @@
 [![Build Status](https://travis-ci.org/robertluo/fun-map.svg?branch=master)](https://travis-ci.org/robertluo/fun-map)
 [![Clojars Project](https://img.shields.io/clojars/v/robertluo/fun-map.svg)](https://clojars.org/robertluo/fun-map)
 
+## TL;DR show me the code!
+
+```clojure
+(require '[robertluo.fun-map :refer :all])
+
+;; Showcase for wrapping functions in a map, accessing using key
+
+(def m
+  "a map contains routines to calculate on :numbers"
+  (fun-map {:cnt     (fnk [numbers] (count numbers))
+            :sum     (fnk [numbers] (reduce + 0 numbers))
+            :average (fnk [cnt sum] (float (/ sum cnt)))}))
+                 
+(:average (assoc m :numbers [3 9 8 10 20]))) ;=> 10 
+
+;; Showcase for lazily update pattern
+
+(def numbers (atom [0]))
+(def m (assoc m :numbers numbers))
+(:average m) ;=> 0
+(reset! numbers [3 9 8 10 20])
+(:average m) ;=> 10
+```
+
+## Rationale
+
 In clojure, code is data, the fun-map turns value fetching function call into map value accessing.
 
 For example, when we store a delay as a value inside a map, we may want to retrieve the value wrapped inside, not the delayed object itself, i.e. a `deref` automatically be called when accessed by map's key. This way, we can treat it as if it is a plain map, without the time difference of when you store and when you retrieve. There are libraries exist for this purpose commonly known as *lazy map*.
