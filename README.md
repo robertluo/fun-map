@@ -25,6 +25,11 @@
 (:average m) ;=> 0.0
 (reset! numbers (range 101))
 (:average m) ;=> 50.0
+
+;; Showcase for compose steps later
+
+(def m (assoc m :num (range 101) :number (fnk [num] (filter #(< % 50) num))))
+(:average m) ;=> 24.5
 ```
 
 ## Rationale
