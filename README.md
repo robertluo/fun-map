@@ -85,19 +85,8 @@ Any value implements `clojure.lang.IDeref` interface in a fun-map will automatic
 ;;=> 10
 
 (:b m)
-;;=> 10 ;Any function as a value will be just be invoked once
+;;=> 10 ;Delay will be evaluated just once
 
-```
-
-Or future objects as values that will be accessed at same time.
-
-```clojure
-(def m (fun-map {:a (future (do (Thread/sleep 1000) 10))
-                 :b (future (do (Thread/sleep 1000) 20))}))
-
-(touch m)
-
-;;=> {:a 10, b 20} ;futures in :a, :b are evaluated parallelly
 ```
 
 ### Where fun begins
@@ -120,8 +109,6 @@ A function in fun-map and has `:wrap` meta as `true` takes the map itself as the
 ```
 
 Notice the above example looks like a prismatic graph, with the difference that a fun-map remains a map, so it can be composed like a map, like `merge` with other map, `assoc` plain value, etc.
-
-Though you should watch out that fun-map does not compute dependencies of keys and the function in a value will just be invoked once, re-assoc a value will not cause its dependents re-invoke.
 
 Fun-map also can be nested, so you could `get-in` or `update-in`.
 
