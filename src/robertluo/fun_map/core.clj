@@ -96,6 +96,11 @@
     (deref d)))
 
 (deftype FunctionWrapper [a-val-pair trace-fn focus-fn f]
+  clojure.lang.IFn
+  (invoke [_ ^Object m]
+    (if (instance? java.util.Map m)
+      (f m)
+      (throw (IllegalArgumentException. "FunctionWrapper's argument must be a map"))))
   ValueWrapper
   (unwrap [_ m k]
     (let [[val focus-val] @a-val-pair
