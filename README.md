@@ -1,4 +1,4 @@
-# fun-map, a map can automatically unwrap and more
+# fun-map, blurs the line between identity, state and function
 
 [![Build Status](https://travis-ci.org/robertluo/fun-map.svg?branch=master)](https://travis-ci.org/robertluo/fun-map)
 [![Clojars Project](https://img.shields.io/clojars/v/robertluo/fun-map.svg)](https://clojars.org/robertluo/fun-map)
@@ -15,7 +15,7 @@
   (fun-map {:cnt     (fnk [numbers] (count numbers))
             :sum     (fnk [numbers] (reduce + 0 numbers))
             :average (fnk [cnt sum] (float (/ sum cnt)))}))
-                 
+
 (:average (assoc m :numbers [3 9 8 10 20])) ;=> 10.0
 
 ;; Showcase for lazily update pattern
@@ -47,12 +47,14 @@
                              (println "event:" event)
                              (recur))
                          (println "channel closed"))))}))
- 
+
 (with-open [system (-> (assoc system :file-name "system.edn") (touch)]
   (let [event-channel (get system :event-channel)]
     (a/>!! event-channel {:event :start})
     (Thread/sleep 1000)) ;=> This will close system and components inside
 ```
+
+> Breaking changes since 0.1.x: normal function inside fun-map with `:wrap true` does not supported now, use `fw` macro instead.
 
 ## Rationale
 
@@ -67,6 +69,87 @@ How about combine them together? Maybe a *delayed future map*?
 Also there is widely used library as [prismatic graph](https://github.com/plumatic/plumbing), store functions as map values, by specify which keys they depend, this map can be compiled to traverse the map.
 
 One common thing in above scenarios is that if we store something in a map as a value, it is intuitive that we care just its underlying real value, no matter when it can be accessed, or what its execution order. As long as it won't change its value once referred, it will be treated as a plain value.
+
+## Concepts
+
+### Value Wrapper
+
+A value wrapper is anything wrapped a value inside. The consumer of a wrapper just interests in the value, it is the provider who concerns about how it wraps. In a fun-map, when accessed by key, the consumer just get the wrapped value, ignoring the difference of the wrapper itself. This frees up for consumer to change code if the wrapper itself changes. Practically, the consumer can just assume it is a plain value, fun-map will unwrap it.
+
+Simple value wrappers are `clojure.lang.IDref` instances, like `delay`, `future`, `promise` which can not change its wrapped value once realized; `atom`, `ref`, `agenet` are also wrappers, but their wrapped value can change. Fun-map blurs the line between all these wrappers. For example:
+
+```clojure
+(def m (fun-map {:numbers (delay [3 4])}))
+
+(defn f [{:keys [numbers]}]
+  (apply * numbers))
+```
+
+The author of f can just use plain value map `{:a [3 4]}` to test, but use `m` as the argument later.
+
+### Function Wrapper
+
+What takes fun-map even further is that a function takes a map as its argument can be treated as value wrapper. The wrapped value will be returned when call it. `fw` macro will define such wrapper inline:
+
+```clojure
+(def m (fun-map {:numbers (fw {} [3 4])}))
+```
+
+And author of `f` can also treat it as a normal map!
+
+### Chained Function Wrapper
+
+The function wrappers' map argument is the fun-map contained it, so by putting different function wrappers inside a fun-map, meaning it provides a new way to construct a function invoking path.
+
+```clojure
+(def m (fun-map {:numbers [3 4]
+                 :cnt (fw {:keys [numbers]} (count numbers))
+                 :average (fw {:keys [numbers cnt]}
+                            (/ (reduce + 0 numbers) cnt))}))
+```
+
+Accessing `:average` value of `m` will make fun-map call it and in turns accessing its `:numbers` and `:cnt` values, and the later is another function wrapper, which make the `:average` function indirectly calling `:cnt` function inside.
+
+### Focus of a function wrapper
+
+A function wrapper can have a focus function to define whether it should be re-unwrapped, if the return value of the function keeps same, it will just return a cached return value. So the focus function need to be very efficient (at least much faster than the wrapped function itself) and pure functional. If no focus function provided, the function wrapper will just be invoked once.
+
+```clojure
+(def m (fun-map {:numbers (atom [5 3])
+                 :other-content (range 1000)
+                 :cnt (fw {:keys [numbers] :focus numbers}
+                        (count numbers))}))
+```
+
+The function inside `:cnt` will only be invoked if `:numbers` changes.
+
+### Trace of function wrappers
+
+Sometimes you want to know when your function wrapper really called wrapped function, you could attach this trace functions to it by `:trace` option:
+
+```clojure
+(def m (fun-map {:numbers (atom [5 3])
+                 :cnt (fw {:keys [numbers]
+                           :trace (fn [k v] (println "key is:" k "value is:" v))}
+                        (count numbers))}))
+```
+
+#### Map shared trace function
+
+The fun-map function itself has a `:trace-fn` function can apply to all function wrappers inside.
+
+## API doc
+
+Check the [cljdoc](https://cljdoc.xyz) link on the top of the page.
+
+A briefing:
+
+ - `fun-map` itself, returns a fun-map of course.
+ - `fw` macro for create function wrappers.
+ - `fnk` macro is a shortcut for common scenario of `fw`, with just keys can be specified, and focus on these keys.
+ - `touch` function to force evaluate a fun-map.
+ - `life-cycle-map` a simple life cycle management fun-map implementation.
+ - `closeable` to create a value wrapper for components support `close` concept.
 
 ## Usage
 
@@ -91,9 +174,7 @@ Any value implements `clojure.lang.IDeref` interface in a fun-map will automatic
 
 ### Where fun begins
 
-A function in fun-map and has `:wrap` meta as `true` takes the map itself as the argument, return value will be *unwrapped* when accessed by key.
-
-`fnk` macro will be handy in many cases, it destructs args from the map, and set the `:wrap` meta.
+`fnk` macro will be handy in many cases, it destructs args from the map, and set focus on these keys:
 
 ```clojure
 (def m (fun-map {:xs (range 10)
@@ -150,6 +231,18 @@ Using above trace feature, it is very easy to support a common scenario of [comp
 ```
 
 `Haltable` protocol can be extended to your type of component, or you can implement `java.io.Closeable` interface to indicate it is a life cycle component.
+
+### Use components from other library
+
+It is very easy to turn a [component](https://github.com/stuartsierra/component) to `closeable` and use a fun-map to integrate a system:
+
+```clojure
+(defn component->closeable
+  [component]
+  (closeable
+    (lifecycle/start component)
+    #(lifecycle/stop component)))
+```
 
 ## License
 

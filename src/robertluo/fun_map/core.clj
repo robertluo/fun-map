@@ -1,4 +1,4 @@
-(ns robertluo.fun-map.core
+(ns ^:no-doc robertluo.fun-map.core
   "implementation of fun-maps.
 
   a fun-map delegates its storage to underlying map m,

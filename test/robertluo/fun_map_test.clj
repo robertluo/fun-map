@@ -104,4 +104,10 @@
           a (fun-map {:a input :b (fnk [a] (* a 2))})]
       (touch a)
       (reset! input 7)
-      (is (= 14 (:b a))))))
+      (is (= 14 (:b a)))))
+  (testing "if no focus function define, the function wrapper will just invoke once"
+    (let [input (atom [3 4])
+          a (fun-map {:a input :cnt (fw {:keys [a]} (count a))})]
+      (is (= 2 (:cnt a)))
+      (reset! input (range 10))
+      (is (= 2 (:cnt a))))))
