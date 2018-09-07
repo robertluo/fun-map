@@ -148,7 +148,7 @@ A briefing:
  - `fun-map` itself, returns a fun-map of course.
  - `fw` macro for create function wrappers.
  - `fnk` macro is a shortcut for common scenario of `fw`, with just keys can be specified, and focus on these keys.
- - `touch` function to force evaluate a fun-map.
+ - `touch` function to force evaluating a fun-map.
  - `life-cycle-map` a simple life cycle management fun-map implementation.
  - `closeable` to create a value wrapper for components support `close` concept.
 
