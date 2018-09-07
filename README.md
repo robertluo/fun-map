@@ -2,6 +2,7 @@
 
 [![Build Status](https://travis-ci.org/robertluo/fun-map.svg?branch=master)](https://travis-ci.org/robertluo/fun-map)
 [![Clojars Project](https://img.shields.io/clojars/v/robertluo/fun-map.svg)](https://clojars.org/robertluo/fun-map)
+[![cljdoc badge](https://cljdoc.xyz/badge/robertluo/fun-map)](https://cljdoc.xyz/d/robertluo/fun-map/CURRENT)
 
 ## TL;DR show me the code!
 
