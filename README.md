@@ -55,7 +55,7 @@
     (Thread/sleep 1000)) ;=> This will close system and components inside
 ```
 
-> Breaking changes since 0.1.x: normal function inside fun-map with `:wrap true` does not supported now, use `fw` macro instead.
+> Breaking changes since 0.1.x: normal function inside fun-map with `:wrap true` is not supported now, use `fw` macro instead.
 
 ## Rationale
 
