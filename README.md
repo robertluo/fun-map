@@ -33,12 +33,25 @@
 
 ;; Showcase for system life cycle
 (def system
-  "system wide data and components"
-  (life-cycle-map
-    {:config (fnk [file-name] (-> (io/file file-name) slurp clojure.edn/read-string))
-     :event-channel (fnk [[:config :channel :buffer]] 
-                     (let [ch (async/chan buffer)] 
-                       (closeable async/close ch))))
+   "system  data and components"
+   (life-cycle-map
+     {:config (fnk [file-name]
+               (-> (io/file file-name) slurp clojure.edn/read-string))
+      :event-channel (fnk [config]
+                       (let [ch (a/chan (get config :buffer 1))]
+                         (closeable ch #(do (println "close event channel") (a/close! ch)))))
+      :event-logger (fnk [event-channel]
+                       (a/go-loop []
+                         (if-let [event (a/<! event-channel)]
+                           (do
+                             (println "event:" event)
+                             (recur))
+                         (println "channel closed"))))}))
+ 
+(with-open [system (-> (assoc system :file-name "system.edn") (touch)]
+  (let [event-channel (get system :event-channel)]
+    (a/>!! event-channel {:event :start})
+    (Thread/sleep 1000)) ;=> This will close system and components inside
 ```
 
 ## Rationale
