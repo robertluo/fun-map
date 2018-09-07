@@ -235,7 +235,7 @@ Using above trace feature, it is very easy to support a common scenario of [comp
 
 ### Use components from other library
 
-It is very easy to turn a [component](https://github.com/stuartsierra/component) to `closeable` and use a fun-map to integrate a system:
+It is very easy to turn a [component](https://github.com/stuartsierra/component) to `closeable` and use a life-cycle-map to integrate a system:
 
 ```clojure
 (defn component->closeable
