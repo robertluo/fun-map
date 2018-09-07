@@ -27,7 +27,7 @@
 (reset! numbers (range 101))
 (:average m) ;=> 50.0
 
-;; Showcase for compose steps later
+;; Showcase for composing steps later
 
 (def m (merge m {:num (range 101) :numbers (fnk [num] (filter #(< % 50) num))}))
 (:average m) ;=> 24.5
@@ -77,7 +77,7 @@ One common thing in above scenarios is that if we store something in a map as a 
 
 A value wrapper is anything wrapped a value inside. The consumer of a wrapper just interests in the value, it is the provider who concerns about how it wraps. In a fun-map, when accessed by key, the consumer just get the wrapped value, ignoring the difference of the wrapper itself. This frees up for consumer to change code if the wrapper itself changes. Practically, the consumer can just assume it is a plain value, fun-map will unwrap it.
 
-Simple value wrappers are `clojure.lang.IDref` instances, like `delay`, `future`, `promise` which can not change its wrapped value once realized; `atom`, `ref`, `agenet` are also wrappers, but their wrapped value can change. Fun-map blurs the line between all these wrappers. For example:
+Simple value wrappers are `clojure.lang.IDref` instances, like `delay`, `future`, `promise` which can not change its wrapped value once realized; `atom`, `ref`, `agent` are also wrappers, but their wrapped value can change. Fun-map blurs the line between all these wrappers. For example:
 
 ```clojure
 (def m (fun-map {:numbers (delay [3 4])}))
