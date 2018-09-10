@@ -22,6 +22,11 @@
     (is (= {:a 3 :b 4} (merge (fun-map {:a (fnk [] 3)})
                               (fun-map {:b (fnk [a] (inc a))})))))
 
+  (testing "merge fun-map with plain map"
+    (is (= {:a 5 :b 6}
+           (merge (fun-map {:b (fnk [a] (inc a))})
+                  {:a 5}))))
+
   (testing "meta data support"
     (is (= {:msg "ok"} (meta (with-meta (fun-map {:a 3}) {:msg "ok"}))))))
 

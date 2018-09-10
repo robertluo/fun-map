@@ -82,8 +82,7 @@
             (wrapped-entry this (.next ite))))))
 
     (cons [o]
-      (if (instance? IFunMap o)
-        (proxy-super cons (if (instance? IFunMap o) (.rawSeq ^IFunMap o) o))))
+      (proxy-super cons (if (instance? IFunMap o) (.rawSeq ^IFunMap o) o)))
 
     (seq []
       (clojure.lang.IteratorSeq/create (.iterator this)))))
