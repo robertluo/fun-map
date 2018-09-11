@@ -1,7 +1,8 @@
 (ns robertluo.fun-map.oop
   "Object Oriented Functional pattern experiment."
   (:require
-   [robertluo.fun-map :as fm]))
+   [robertluo.fun-map :as fm]
+   [robertluo.fun-map.core :as impl]))
 
 (defmacro defobject
   "Returns a constructor function takes a map as the argument, return the object.
@@ -31,22 +32,28 @@
           `(-> ~base (assoc ~@attributes))
           base))))
 
-(try
-  (require '[clojure.spec.alpha :as s])
-  (s/def ::object-name (s/and symbol? #(nil? (namespace %))))
-  (s/def ::attribute-name (s/or :keyword keyword? :symbol symbol?))
-  (s/def ::attribute-value any?)
-  (s/fdef defobject
-          :args (s/cat :obj-name ::object-name
-                       :mix-ins (s/coll-of symbol?)
-                       :attributes (s/* (s/cat :attr-name ::attribute-name
-                                               ::attribute-val ::attribute-value))))
-  (catch java.io.FileNotFoundException _))
-
 (defmacro .-
   "Calls a method of obj"
   [obj method & args]
   `((~(if (symbol? method) `'~method method) ~obj) ~@args))
+
+(try
+  (require '[clojure.spec.alpha :as s])
+  (require '[robertluo.fun-map.core :as impl])
+  (s/def ::object-name (s/and symbol? #(nil? (namespace %))))
+  (s/def ::attribute-name (s/or :keyword keyword? :symbol symbol?))
+  (s/def ::attribute-value any?)
+  (s/fdef defobject
+    :args (s/cat :obj-name ::object-name
+                 :mix-ins (s/coll-of symbol?)
+                 :attributes (s/* (s/cat :attr-name ::attribute-name
+                                         ::attribute-val ::attribute-value))))
+
+  (s/fdef .-
+    :args (s/cat :obj any?
+                 :method ::attribute-name
+                 :args (s/* any?)))
+  (catch java.io.FileNotFoundException _))
 
 (comment
   (defobject Foo []

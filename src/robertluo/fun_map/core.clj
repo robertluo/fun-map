@@ -129,3 +129,7 @@
 (defn value-wrapper?
   [o]
   (satisfies? ValueWrapper o))
+
+(defn fun-map?
+  [o]
+  (instance? IFunMap o))
