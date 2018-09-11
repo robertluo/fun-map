@@ -21,7 +21,10 @@
   attribute :foo/baz and method 'shout."
   {:style/indent [2 :form :form [1]]}
   [obj-name mix-ins & attributes]
-  (let [base `(reduce #(%2 %) (fm/fun-map ~'this) ~mix-ins)]
+  (let [f-trans    (fn [[aname avalue]]
+                     [(if (symbol? aname) `'~aname aname) avalue])
+        attributes (mapcat f-trans (partition 2 attributes))
+        base       `(reduce #(%2 %) (fm/fun-map ~'this) ~mix-ins)]
     `(defn ~obj-name
        [~'this]
        ~(if (seq attributes)
@@ -43,7 +46,18 @@
 (defmacro .-
   "Calls a method of obj"
   [obj method & args]
-  `((~method ~obj) ~@args))
+  `((~(if (symbol? method) `'~method method) ~obj) ~@args))
 
 (comment
-  (.- d :greet "1" 3))
+  (defobject Foo []
+    :foo/inc
+    (fm/fnk [number] (inc number))
+    :greet
+    (fm/fnk [:foo/inc]
+      (fn [name]
+        (str name inc)))
+    shout
+    (fm/fnk [:foo/inc]
+      (fn [name] (str "Hello," inc " from " name))))
+  (.- (Foo {:number 4}) shout "world")
+  (.- (Foo {:number 3}) :greet "world"))
