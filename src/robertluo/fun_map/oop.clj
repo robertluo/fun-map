@@ -1,8 +1,7 @@
 (ns robertluo.fun-map.oop
   "Object Oriented Functional pattern experiment."
   (:require
-   [robertluo.fun-map :as fm]
-   [robertluo.fun-map.core :as impl]))
+   [robertluo.fun-map :as fm]))
 
 (defmacro defobject
   "Returns a constructor function takes a map as the argument, return the object.
