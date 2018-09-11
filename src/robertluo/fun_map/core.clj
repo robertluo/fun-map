@@ -125,3 +125,7 @@
   java.io.Closeable
   (close [_]
     (close-fn)))
+
+(defn value-wrapper?
+  [o]
+  (satisfies? ValueWrapper o))
