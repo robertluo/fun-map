@@ -18,7 +18,7 @@
           (str \"Hello,\" baz))))
 
   defines an object constructor Foo which mixins constructor Bar with
-  attribute :foo/baz and method 'shout."
+  attribute :foo/baz and method shout."
   {:style/indent [2 :form :form [1]]}
   [obj-name mix-ins & attributes]
   (let [f-trans    (fn [[aname avalue]]
@@ -36,9 +36,8 @@
   [obj method & args]
   `((~(if (symbol? method) `'~method method) ~obj) ~@args))
 
-(try
-  (require '[clojure.spec.alpha :as s])
-  (require '[robertluo.fun-map.core :as impl])
+;;Optional with spec support for working with clojure < 1.9
+(fm/opt-require '[clojure.spec.alpha :as s]
   (s/def ::object-name (s/and symbol? #(nil? (namespace %))))
   (s/def ::attribute-name (s/or :keyword keyword? :symbol symbol?))
   (s/def ::attribute-value any?)
@@ -51,8 +50,7 @@
   (s/fdef .-
     :args (s/cat :obj any?
                  :method ::attribute-name
-                 :args (s/* any?)))
-  (catch java.io.FileNotFoundException _))
+                 :args (s/* any?))))
 
 (comment
   (defobject Foo []
@@ -60,10 +58,10 @@
     (fm/fnk [number] (inc number))
     :greet
     (fm/fnk [:foo/inc]
-      (fn [name]
-        (str name inc)))
+            (fn [name]
+              (str name inc)))
     shout
     (fm/fnk [:foo/inc]
-      (fn [name] (str "Hello," inc " from " name))))
+            (fn [name] (str "Hello," inc " from " name))))
   (.- (Foo {:number 4}) shout "world")
   (.- (Foo {:number 3}) :greet "world"))
