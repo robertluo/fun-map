@@ -27,9 +27,9 @@
         base       `(reduce #(%2 %) (fm/fun-map ~'this) ~mix-ins)]
     `(defn ~obj-name
        [~'this]
-       ~(if (seq attributes)
-          `(-> ~base (assoc ~@attributes))
-          base))))
+       (reduce #(%2 %)
+               (merge (fm/fun-map (array-map ~@attributes)) ~'this)
+               ~mix-ins))))
 
 (defmacro .-
   "Calls a method of obj"
@@ -63,5 +63,7 @@
     shout
     (fm/fnk [:foo/inc]
             (fn [name] (str "Hello," inc " from " name))))
+  (def a (Foo {:number 4}))
+  (:number a)
   (.- (Foo {:number 4}) shout "world")
   (.- (Foo {:number 3}) :greet "world"))
