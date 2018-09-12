@@ -31,26 +31,44 @@
                (merge (fm/fun-map (array-map ~@attributes)) ~'this)
                ~mix-ins))))
 
-(defmacro .-
+(defmacro +>
   "Calls a method of obj"
   [obj method & args]
-  `((~(if (symbol? method) `'~method method) ~obj) ~@args))
+  (let [method (if (symbol? method) `'~method method)]
+    `(if-let [~'mth (~obj ~method)]
+       (~'mth ~@args)
+       (throw (IllegalArgumentException. (str ~method " not exist"))))))
 
 ;;Optional with spec support for working with clojure < 1.9
-(fm/opt-require '[clojure.spec.alpha :as s]
+(fm/opt-require [clojure.spec.alpha :as s]
+
+  (defmacro object-spec
+    "Define spec for object"
+    {:style/indent 1}
+    [obj-spec prop-specs]
+    (let [prop-forms (for [[prop spec] prop-specs]
+                       `(s/def ~prop ~spec))]
+      `(do
+         ~@prop-forms
+         (s/def ~obj-spec (s/keys :req ~(vec (keys prop-specs)))))))
+
   (s/def ::object-name (s/and symbol? #(nil? (namespace %))))
   (s/def ::attribute-name (s/or :keyword keyword? :symbol symbol?))
   (s/def ::attribute-value any?)
+
   (s/fdef defobject
     :args (s/cat :obj-name ::object-name
                  :mix-ins (s/coll-of symbol?)
                  :attributes (s/* (s/cat :attr-name ::attribute-name
                                          ::attribute-val ::attribute-value))))
 
-  (s/fdef .-
+  (s/fdef +>
     :args (s/cat :obj any?
                  :method ::attribute-name
-                 :args (s/* any?))))
+                 :args (s/* any?)))
+  (s/fdef object-spec
+    :args (s/cat :obj-spec qualified-keyword?
+                 :props (s/map-of qualified-keyword? any?))))
 
 (comment
   (defobject Foo []
@@ -58,12 +76,12 @@
     (fm/fnk [number] (inc number))
     :greet
     (fm/fnk [:foo/inc]
-            (fn [name]
-              (str name inc)))
+      (fn [name]
+        (str name inc)))
     shout
     (fm/fnk [:foo/inc]
-            (fn [name] (str "Hello," inc " from " name))))
+      (fn [name] (str "Hello," inc " from " name))))
   (def a (Foo {:number 4}))
-  (:number a)
-  (.- (Foo {:number 4}) shout "world")
-  (.- (Foo {:number 3}) :greet "world"))
+  (+> (Foo {:number 4}) shout "world")
+  (object-spec ::Foo
+               {:foo/inc number?}))
