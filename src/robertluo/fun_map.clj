@@ -1,7 +1,8 @@
 (ns robertluo.fun-map
   "fun-map Api"
   (:require
-   [robertluo.fun-map.core :as impl]))
+   [robertluo.fun-map.core :as impl]
+   [clojure.spec.alpha :as s]))
 
 (defn fun-map
   "Returns a new fun-map.
@@ -60,13 +61,16 @@
       (+ a b))"
   {:style/indent 1}
   [arg-map & body]
-  (let [{:keys [trace focus]} arg-map
-        arg-map (dissoc arg-map :trace :focus)]
-    `(impl/fn-wrapper
-      (fn [~arg-map]
-        ~@body)
-      ~(when trace trace)
-      ~(when focus `(fn [~arg-map] ~focus)))))
+  (let [{:keys [impl]} arg-map
+        naming-keys    (filter symbol? (keys arg-map))
+        comm-destruct  (concat [:keys :as :or] naming-keys)
+        options        (apply dissoc arg-map :impl comm-destruct)
+        arg-map        (select-keys arg-map comm-destruct)
+        f              `(fn [~arg-map] ~@body)]
+    (impl/fw-impl {:f f :arg-map arg-map :impl impl :options options})))
+
+(comment
+  (fw {:keys [a] :focus a} (inc a)))
 
 (defmacro fnk
   "A shortcut for `fw` macro. Returns a simple FunctionWrapper which depends on
@@ -118,6 +122,19 @@
   [r close-fn]
   (impl/->CloseableValue r close-fn))
 
+(defn fun-map?
+  "If m is a fun-map"
+  [m]
+  (impl/fun-map? m))
+
+(defmacro +>
+  "Calls a method of obj"
+  [obj method & args]
+  (let [method (if (symbol? method) `'~method method)]
+    `(if-let [~'mth (~obj ~method)]
+       (~'mth ~@args)
+       (throw (IllegalArgumentException. (str ~method " not exist"))))))
+
 (defmacro opt-require
   "Optional requires rqr-clause and if it succeed do the body"
   {:style/indent 1}
@@ -129,3 +146,19 @@
         (catch Exception _
           false))
     `(do ~@body)))
+
+(opt-require [clojure.spec.alpha :as s]
+  (s/fdef fun-map
+    :args (s/cat :map map?)
+    :ret fun-map?)
+
+  (s/fdef fw
+    :args (s/cat :arg-map map? :body (s/* any?)))
+
+  (s/fdef fnk
+    :args (s/cat :args vector? :body (s/* any?)))
+
+  (s/fdef +>
+    :args (s/cat :obj any?
+                 :method ::attribute-name
+                 :args (s/* any?))))

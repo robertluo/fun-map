@@ -118,6 +118,31 @@
     focus-fn
     f))
 
+(defmulti fw-impl
+  "returns a form for fw macro implementation"
+  :impl)
+
+(defmethod fw-impl :default
+  [{:keys [f arg-map options]}]
+  (let [{:keys [focus trace]} options]
+    `(fn-wrapper
+      ~f
+      ~(when trace trace)
+      ~(when focus `(fn [~arg-map] ~focus)))))
+
+(defn naive-function-wrapper
+  [f]
+  (reify
+    clojure.lang.IFn
+    (invoke [_ m]
+      (f m))
+    ValueWrapper
+    (unwrap [_ m _]
+      (f m))))
+
+(defmethod fw-impl :naive [{:keys [f]}]
+  `(naive-function-wrapper ~f))
+
 (deftype CloseableValue [value close-fn]
   clojure.lang.IDeref
   (deref [_]

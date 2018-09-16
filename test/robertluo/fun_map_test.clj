@@ -116,3 +116,12 @@
       (is (= 2 (:cnt a)))
       (reset! input (range 10))
       (is (= 2 (:cnt a))))))
+
+(deftest naive-fw-test
+  (testing "choose naive function wrapper, no value will be cached"
+    (let [a (atom 0)
+          m (fun-map {:a a
+                      :b (fw {a :a :impl :naive} (inc a))})]
+      (is (= {:a 0 :b 1} m))
+      (swap! a inc)
+      (is (= {:a 1 :b 2} m)))))

@@ -1,7 +1,8 @@
 (ns robertluo.fun-map.oop
   "Object Oriented Functional pattern experiment."
   (:require
-   [robertluo.fun-map :as fm]))
+   [robertluo.fun-map :as fm]
+   [clojure.spec.alpha :as s]))
 
 (defmacro defobject
   "Returns a constructor function takes a map as the argument, return the object.
@@ -44,13 +45,13 @@
 
   (defmacro object-spec
     "Define spec for object"
-    {:style/indent 1}
-    [obj-spec prop-specs]
+    {:style/indent 2}
+    [obj-spec mixins prop-specs]
     (let [prop-forms (for [[prop spec] prop-specs]
                        `(s/def ~prop ~spec))]
       `(do
          ~@prop-forms
-         (s/def ~obj-spec (s/keys :req ~(vec (keys prop-specs)))))))
+         (s/def ~obj-spec (s/merge ~@mixins (s/keys :req ~(vec (keys prop-specs))))))))
 
   (s/def ::object-name (s/and symbol? #(nil? (namespace %))))
   (s/def ::attribute-name (s/or :keyword keyword? :symbol symbol?))
@@ -68,6 +69,7 @@
                  :args (s/* any?)))
   (s/fdef object-spec
     :args (s/cat :obj-spec qualified-keyword?
+                 :mix-ins  (s/coll-of qualified-keyword?)
                  :props (s/map-of qualified-keyword? any?))))
 
 (comment
