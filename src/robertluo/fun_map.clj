@@ -150,8 +150,9 @@
     `(do ~@body)))
 
 (opt-require [clojure.spec.alpha :as s]
+  (s/def ::trace-fn fn?)
   (s/fdef fun-map
-    :args (s/cat :map map?)
+    :args (s/cat :map map? :trace (s/keys* :opt-un [::trace-fn]))
     :ret fun-map?)
 
   (s/fdef fw
@@ -159,6 +160,8 @@
 
   (s/fdef fnk
     :args (s/cat :args vector? :body (s/* any?)))
+
+  (s/def ::attribute-name (s/or :keyword keyword? :symbol symbol?))
 
   (s/fdef +>
     :args (s/cat :obj any?
