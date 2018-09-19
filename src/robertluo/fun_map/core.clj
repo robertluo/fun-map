@@ -15,8 +15,12 @@
   (unwrap [this m k]
     "unwrap the real value from a wrapper on the key of k"))
 
+(defn value-wrapper?
+  [o]
+  (satisfies? ValueWrapper o))
+
 (defn deep-unwrap [o m k]
-  (if (satisfies? ValueWrapper o)
+  (if (value-wrapper? o)
     (recur (unwrap o m k) m k)
     o))
 
@@ -94,29 +98,41 @@
   (unwrap [d _ _]
     (deref d)))
 
-(deftype FunctionWrapper [a-val-pair trace-fn focus-fn f]
-  clojure.lang.IFn
-  (invoke [_ ^Object m]
-    (if (instance? java.util.Map m)
-      (f m)
-      (throw (IllegalArgumentException. "FunctionWrapper's argument must be a map"))))
-  ValueWrapper
-  (unwrap [_ m k]
+(defn cached
+  "a remember last argument cached function middleware"
+  [f a-val-pair focus-fn]
+  (fn [m k]
     (let [[val focus-val] @a-val-pair
           new-focus-val (if focus-fn (focus-fn m) ::unrealized)]
       (if (or (= ::unrealized val) (not= new-focus-val focus-val))
-        (let [[new-val] (swap! a-val-pair (fn [_] [(f m) new-focus-val]))]
-          (when-let [trace-fn (or trace-fn (-> m meta ::trace))]
-            (trace-fn k new-val))
-          new-val)
+        (first (swap! a-val-pair (fn [_] [(f m k) new-focus-val])))
         val))))
+
+(defn traced
+  "trace funtion call"
+  [f trace-fn]
+  (fn [m k]
+    (let [v (f m k)]
+      (when-let [trace-fn (or trace-fn (some-> m meta ::trace))]
+        (trace-fn k v))
+      v)))
+
+(deftype FunctionWrapper [f]
+  clojure.lang.IFn
+  (invoke [_ ^Object m]
+    (if (instance? java.util.Map m)
+      (f m ::impossible)
+      (throw (IllegalArgumentException.
+              "FunctionWrapper's argument must be a map"))))
+  ValueWrapper
+  (unwrap [_ m k]
+    (f m k)))
 
 (defn fn-wrapper [f trace-fn focus-fn]
   (->FunctionWrapper
-   (atom [::unrealized ::unrealized])
-    trace-fn
-    focus-fn
-    f))
+   (-> (fn [m _] (f m))
+       (traced trace-fn)
+       (cached (atom [::unrealized ::unrealized]) focus-fn))))
 
 (defmulti fw-impl
   "returns a form for fw macro implementation"
@@ -130,18 +146,8 @@
       ~(when trace trace)
       ~(when focus `(fn [~arg-map] ~focus)))))
 
-(defn naive-function-wrapper
-  [f]
-  (reify
-    clojure.lang.IFn
-    (invoke [_ m]
-      (f m))
-    ValueWrapper
-    (unwrap [_ m _]
-      (f m))))
-
 (defmethod fw-impl :naive [{:keys [f]}]
-  `(naive-function-wrapper ~f))
+  `(->FunctionWrapper (fn [~'m ~'_] (~f ~'m))))
 
 (deftype CloseableValue [value close-fn]
   clojure.lang.IDeref
@@ -150,10 +156,6 @@
   java.io.Closeable
   (close [_]
     (close-fn)))
-
-(defn value-wrapper?
-  [o]
-  (satisfies? ValueWrapper o))
 
 (defn fun-map?
   [o]
