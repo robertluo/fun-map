@@ -2,6 +2,7 @@
   "fun-map Api"
   (:require
    [robertluo.fun-map.core :as impl]
+   [robertluo.fun-map.util :as util]
    [clojure.spec.alpha :as s]))
 
 (defn fun-map
@@ -81,7 +82,7 @@
   [args & body]
   `(fw {:keys  ~args
         :focus ~args}
-     ~@body))
+       ~@body))
 
 ;;;;;; life cycle map
 
@@ -129,27 +130,7 @@
   [m]
   (impl/fun-map? m))
 
-(defmacro +>
-  "Calls a method of obj"
-  [obj method & args]
-  (let [method (if (symbol? method) `'~method method)]
-    `(if-let [~'mth (~obj ~method)]
-       (~'mth ~@args)
-       (throw (IllegalArgumentException. (str ~method " not exist"))))))
-
-(defmacro opt-require
-  "Optional requires rqr-clause and if it succeed do the body"
-  {:style/indent 1}
-  [rqr-clause & body]
-  (when
-      (try
-        (require rqr-clause)
-        true
-        (catch Exception _
-          false))
-    `(do ~@body)))
-
-(opt-require [clojure.spec.alpha :as s]
+(util/opt-require [clojure.spec.alpha :as s]
   (s/def ::trace-fn fn?)
   (s/fdef fun-map
     :args (s/cat :map map? :trace (s/keys* :opt-un [::trace-fn]))
@@ -159,11 +140,4 @@
     :args (s/cat :arg-map map? :body (s/* any?)))
 
   (s/fdef fnk
-    :args (s/cat :args vector? :body (s/* any?)))
-
-  (s/def ::attribute-name (s/or :keyword keyword? :symbol symbol?))
-
-  (s/fdef +>
-    :args (s/cat :obj any?
-                 :method ::attribute-name
-                 :args (s/* any?))))
+    :args (s/cat :args vector? :body (s/* any?))))

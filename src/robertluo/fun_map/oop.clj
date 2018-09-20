@@ -2,6 +2,7 @@
   "Object Oriented Functional pattern experiment."
   (:require
    [robertluo.fun-map :as fm]
+   [robertluo.fun-map.util :as util]
    [clojure.spec.alpha :as s]))
 
 (defmacro defobject
@@ -41,7 +42,7 @@
        (throw (IllegalArgumentException. (str ~method " not exist"))))))
 
 ;;Optional with spec support for working with clojure < 1.9
-(fm/opt-require [clojure.spec.alpha :as s]
+(util/opt-require [clojure.spec.alpha :as s]
 
   (defmacro object-spec
     "Define spec for object"
