@@ -91,12 +91,28 @@
     (seq []
       (clojure.lang.IteratorSeq/create (.iterator this)))))
 
-;;;;;;;;;;;; Function wrapper
+;;;;;;;;;;;; ValueWrappers
 
 (extend-protocol ValueWrapper
   clojure.lang.IDeref
   (unwrap [d _ _]
     (deref d)))
+
+(deftype FunctionWrapper [f]
+  clojure.lang.IFn
+  (invoke [_ ^Object m]
+    (if (instance? java.util.Map m)
+      (f m ::impossible)
+      (throw (IllegalArgumentException.
+              "FunctionWrapper's argument must be a map"))))
+  ValueWrapper
+  (unwrap [_ m k]
+    (f m k)))
+
+(defn fun-wrapper
+  "returns a new FunctionWrapper with single argument function f"
+  [f]
+  (->FunctionWrapper (fn [m _] (f m))))
 
 (defn cached
   "a remember last argument cached function middleware"
@@ -117,37 +133,35 @@
         (trace-fn k v))
       v)))
 
-(deftype FunctionWrapper [f]
-  clojure.lang.IFn
-  (invoke [_ ^Object m]
-    (if (instance? java.util.Map m)
-      (f m ::impossible)
-      (throw (IllegalArgumentException.
-              "FunctionWrapper's argument must be a map"))))
-  ValueWrapper
-  (unwrap [_ m k]
-    (f m k)))
-
-(defn fn-wrapper [f trace-fn focus-fn]
+(defn tf-fun-wrapper
+  "A traced, cached last implementation of fun-wrapper"
+  [f trace-fn focus-fn]
   (->FunctionWrapper
    (-> (fn [m _] (f m))
        (traced trace-fn)
        (cached (atom [::unrealized ::unrealized]) focus-fn))))
 
+;;;;;;;;;; fw macro implementation
+
 (defmulti fw-impl
   "returns a form for fw macro implementation"
   :impl)
 
-(defmethod fw-impl :default
+(defn fw-impl-tf-wrapper
   [{:keys [f arg-map options]}]
   (let [{:keys [focus trace]} options]
-    `(fn-wrapper
+    `(tf-fun-wrapper
       ~f
       ~(when trace trace)
       ~(when focus `(fn [~arg-map] ~focus)))))
 
 (defmethod fw-impl :naive [{:keys [f]}]
-  `(->FunctionWrapper (fn [~'m ~'_] (~f ~'m))))
+  `(fun-wrapper ~f))
+
+(defmethod fw-impl :trace-cache [m]
+  (fw-impl-tf-wrapper m))
+
+;;;;;;;;;;; Utilities
 
 (deftype CloseableValue [value close-fn]
   clojure.lang.IDeref

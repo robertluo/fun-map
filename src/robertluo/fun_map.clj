@@ -70,7 +70,7 @@
         options        (apply dissoc arg-map :impl comm-destruct)
         arg-map        (select-keys arg-map comm-destruct)
         f              `(fn [~arg-map] ~@body)]
-    (impl/fw-impl {:f f :arg-map arg-map :impl impl :options options})))
+    (impl/fw-impl {:f f :arg-map arg-map :impl (or impl :trace-cache) :options options})))
 
 (comment
   (fw {:keys [a] :focus a} (inc a)))
