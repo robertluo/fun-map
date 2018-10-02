@@ -174,3 +174,13 @@
 (defn fun-map?
   [o]
   (instance? IFunMap o))
+
+(defmethod print-method FunctionWrapper [^FunctionWrapper o ^java.io.Writer wtr]
+  (.write wtr (str "<<" (.f o) ">>")))
+
+(defmethod print-method IFunMap [^IFunMap o ^java.io.Writer wtr]
+  (let [raw-entry (.rawSeq o)]
+    (print-method (into {} raw-entry) wtr)))
+
+(prefer-method print-method IFunMap clojure.lang.IPersistentMap)
+(prefer-method print-method IFunMap java.util.Map)
