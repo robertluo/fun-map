@@ -8,11 +8,12 @@
   a special version of entry, evaluate it's value by
   invoking the wrapper."
   (:import [clojure.lang
+            IFn
             IMapEntry
             APersistentMap]))
 
 (defprotocol ValueWrapper
-  (unwrap [this m k]
+  (-unwrap [this m k]
     "unwrap the real value from a wrapper on the key of k"))
 
 (defn value-wrapper?
@@ -21,7 +22,7 @@
 
 (defn deep-unwrap [o m k]
   (if (value-wrapper? o)
-    (recur (unwrap o m k) m k)
+    (recur (-unwrap o m k) m k)
     o))
 
 (defn wrapped-entry [m ^IMapEntry entry]
@@ -95,18 +96,18 @@
 
 (extend-protocol ValueWrapper
   clojure.lang.IDeref
-  (unwrap [d _ _]
+  (-unwrap [d _ _]
     (deref d)))
 
 (deftype FunctionWrapper [f]
-  clojure.lang.IFn
+  IFn
   (invoke [_ ^Object m]
     (if (instance? java.util.Map m)
       (f m ::impossible)
       (throw (IllegalArgumentException.
               "FunctionWrapper's argument must be a map"))))
   ValueWrapper
-  (unwrap [_ m k]
+  (-unwrap [_ m k]
     (f m k)))
 
 (defn fun-wrapper
@@ -114,21 +115,29 @@
   [f]
   (->FunctionWrapper (fn [m _] (f m))))
 
-(defn cached
-  "a remember last argument cached function middleware"
-  [f a-val-pair focus-fn]
-  (fn [m k]
+(defn invoke-wrapped [wrapped m]
+  (if (instance? IFn wrapped)
+    (.invoke wrapped m)))
+
+(deftype CachedWrapper [wrapped a-val-pair focus-fn]
+  IFn
+  (invoke [_ m]
+    (invoke-wrapped wrapped m))
+  ValueWrapper
+  (-unwrap [_ m k]
     (let [[val focus-val] @a-val-pair
           new-focus-val (if focus-fn (focus-fn m) ::unrealized)]
       (if (or (= ::unrealized val) (not= new-focus-val focus-val))
-        (first (swap! a-val-pair (fn [_] [(f m k) new-focus-val])))
+        (first (swap! a-val-pair (fn [_] [(-unwrap wrapped m k) new-focus-val])))
         val))))
 
-(defn traced
-  "trace funtion call"
-  [f trace-fn]
-  (fn [m k]
-    (let [v (f m k)]
+(deftype TracedWrapper [wrapped trace-fn]
+  IFn
+  (invoke [_ m]
+    (invoke-wrapped wrapped m))
+  ValueWrapper
+  (-unwrap [_ m k]
+    (let [v (-unwrap wrapped m k)]
       (when-let [trace-fn (or trace-fn (some-> m meta ::trace))]
         (trace-fn k v))
       v)))
@@ -136,10 +145,9 @@
 (defn tf-fun-wrapper
   "A traced, cached last implementation of fun-wrapper"
   [f trace-fn focus-fn]
-  (->FunctionWrapper
-   (-> (fn [m _] (f m))
-       (traced trace-fn)
-       (cached (atom [::unrealized ::unrealized]) focus-fn))))
+  (-> (fun-wrapper f)
+      (TracedWrapper. trace-fn)
+      (CachedWrapper. (atom [::unrealized ::unrealized]) focus-fn)))
 
 ;;;;;;;;;; fw macro implementation
 
@@ -177,6 +185,13 @@
 
 (defmethod print-method FunctionWrapper [^FunctionWrapper o ^java.io.Writer wtr]
   (.write wtr (str "<<" (.f o) ">>")))
+
+(defmethod print-method CachedWrapper [^CachedWrapper o ^java.io.Writer wtr]
+  (.write wtr
+          (str "<<"
+               (let [v (-> (.a_val_pair o) deref first)]
+                 (if (= ::unrealized v) "unrealized" v))
+               ">>")))
 
 (defmethod print-method IFunMap [^IFunMap o ^java.io.Writer wtr]
   (let [raw-entry (.rawSeq o)]
