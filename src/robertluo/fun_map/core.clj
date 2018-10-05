@@ -151,9 +151,40 @@
 
 ;;;;;;;;;; fw macro implementation
 
+(defn destruct-map
+  "destruct arg-map of fw macro into different groups"
+  [arg-map]
+  (reduce
+   (fn [rst [k v]]
+     (cond
+       (= k :keys)
+       (update rst :naming into (map (fn [s] [s (keyword s)]) v))
+
+       (symbol? k)
+       (update rst :naming assoc k v)
+
+       (#{:as :or} k)
+       (update rst :normal assoc k v)
+
+       (and (keyword? k) (= "keys" (name k)))
+       (let [ns (namespace k)]
+         (update rst :naming into (map (fn [s] [s (keyword ns (name s))]) v)))
+
+       :else
+       (update rst :fm assoc k v)))
+   {:naming {} :normal {} :fm {}}
+   arg-map))
+
 (defmulti fw-impl
   "returns a form for fw macro implementation"
   :impl)
+
+(defn make-fw-wrapper
+  [arg-map body]
+  (let [{:keys [naming normal fm]} (destruct-map arg-map)
+        arg-map (merge naming normal)
+        f `(fn [~arg-map] ~@body)]
+    (fw-impl {:impl (:impl fm) :f f :arg-map arg-map :options fm})))
 
 (defn fw-impl-tf-wrapper
   [{:keys [f arg-map options]}]
@@ -166,7 +197,7 @@
 (defmethod fw-impl :naive [{:keys [f]}]
   `(fun-wrapper ~f))
 
-(defmethod fw-impl :trace-cache [m]
+(defmethod fw-impl :default [m]
   (fw-impl-tf-wrapper m))
 
 ;;;;;;;;;;; Utilities

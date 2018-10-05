@@ -64,13 +64,7 @@
       (+ a b))"
   {:style/indent 1}
   [arg-map & body]
-  (let [{:keys [impl]} arg-map
-        naming-keys    (filter symbol? (keys arg-map))
-        comm-destruct  (concat [:keys :as :or] naming-keys)
-        options        (apply dissoc arg-map :impl comm-destruct)
-        arg-map        (select-keys arg-map comm-destruct)
-        f              `(fn [~arg-map] ~@body)]
-    (impl/fw-impl {:f f :arg-map arg-map :impl (or impl :trace-cache) :options options})))
+  (impl/make-fw-wrapper arg-map body))
 
 (comment
   (fw {:keys [a] :focus a} (inc a)))
