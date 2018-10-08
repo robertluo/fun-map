@@ -144,7 +144,7 @@
    (fn [rst [k v]]
      (cond
        (= k :keys)
-       (update rst :naming into (map (fn [s] [s (keyword s)]) v))
+       (update rst :naming into (map (fn [s] [(-> s name symbol) (keyword s)]) v))
 
        (symbol? k)
        (update rst :naming assoc k v)

@@ -5,7 +5,7 @@
 
 (deftest fun-map-test
   (testing "computed attribute of other attributes"
-    (is (= 10 (:c (fun-map {:a 3 :b 7 :c (fnk [a b] (+ a b))}))))
+    (is (= 10 (:c (fun-map {:a/a 3 :b 7 :c (fnk [:a/a b] (+ a b))}))))
     (is (= 1000 (:c (fun-map {:a 10 :b (fnk [a] (* a a)) :c (fnk [b] (* 10 b))})))))
 
   (testing "equiv test. ! Maybe very expensive"
