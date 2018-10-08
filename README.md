@@ -33,17 +33,19 @@
 (:average m) ;=> 24.5
 ```
 
-## Highlight of current Version (0.3)
+## Highlight of current Version (0.3.0-SNAPSHOT)
 
  - `fw` macro now is more flexible, you can use `:impl` key to specify wrappers of function.
   - default wrapper (with no `:impl` option, suitable for most cases)
     - cached, traced wrapper. The return value of wrapped function is cached for last argument.
     - optional spec checker with `:spec` specify the return value's spec. Will check if it conform the spec.
+    - optional parallel execution with `:par? true` specified in `fw` and with [manifold](https://github.com/ztellman/manifold) in your projects dependencies.
   - naive wrapper (`:impl :naive`)
     - the wrapped function will be invoked every time you access it.
  - `print-method` for better developing experience. When you print the content of a fun map, the wrapped function will not be invoked. You can use `(into {} m)` to print everything inside it though.
 
 > Breaking change since 0.1.x: normal function inside fun-map with `:wrap true` is not supported now, use `fw` macro instead.
+
 > Breaking change since 0.2.x: function wrapper does not extending `IFn` anymore since it brings too much implementation burden for nested wrappers.
 
 ## Rationale
