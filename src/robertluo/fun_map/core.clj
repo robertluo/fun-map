@@ -8,9 +8,11 @@
   a special version of entry, evaluate it's value by
   invoking the wrapper."
   (:import [clojure.lang
-            IFn
             IMapEntry
-            APersistentMap]))
+            APersistentMap])
+  (:require [robertluo.fun-map.util :as util]
+            [clojure.spec.alpha :as s]
+            [manifold.deferred :as d]))
 
 (defprotocol ValueWrapper
   (-unwrap [this m k]
@@ -100,12 +102,6 @@
     (deref d)))
 
 (deftype FunctionWrapper [f]
-  IFn
-  (invoke [_ ^Object m]
-    (if (instance? java.util.Map m)
-      (f m ::impossible)
-      (throw (IllegalArgumentException.
-              "FunctionWrapper's argument must be a map"))))
   ValueWrapper
   (-unwrap [_ m k]
     (f m k)))
@@ -115,14 +111,7 @@
   [f]
   (->FunctionWrapper (fn [m _] (f m))))
 
-(defn invoke-wrapped [wrapped m]
-  (if (instance? IFn wrapped)
-    (.invoke wrapped m)))
-
 (deftype CachedWrapper [wrapped a-val-pair focus-fn]
-  IFn
-  (invoke [_ m]
-    (invoke-wrapped wrapped m))
   ValueWrapper
   (-unwrap [_ m k]
     (let [[val focus-val] @a-val-pair
@@ -132,9 +121,6 @@
         val))))
 
 (deftype TracedWrapper [wrapped trace-fn]
-  IFn
-  (invoke [_ m]
-    (invoke-wrapped wrapped m))
   ValueWrapper
   (-unwrap [_ m k]
     (let [v (-unwrap wrapped m k)]
@@ -175,16 +161,38 @@
    {:naming {} :normal {} :fm {}}
    arg-map))
 
+(defn make-binding
+  "prepare binding for let"
+  [naming {:keys [or as]}]
+  (cond-> (mapcat
+           (fn [[sym k]]
+             (let [g `(get ~'m ~k)
+                   kf (if-let [v (get or sym)] `(or ~g ~v) g)]
+               [sym kf]))
+           naming)
+    as (concat [as 'm])
+    true vec))
+
 (defmulti fw-impl
   "returns a form for fw macro implementation"
   :impl)
 
+(defmulti let-form (fn [fm binding] (:impl fm)))
+(defmethod let-form :default
+  [_ binding]
+  [`let binding])
+
 (defn make-fw-wrapper
+  "construct fw"
   [arg-map body]
   (let [{:keys [naming normal fm]} (destruct-map arg-map)
         arg-map (merge naming normal)
-        f `(fn [~arg-map] ~@body)]
-    (fw-impl {:impl (:impl fm) :f f :arg-map arg-map :options fm})))
+        [lets binding] (let-form fm (make-binding naming normal))
+        f `(fn [~'m] (~lets ~binding ~@body))]
+    (fw-impl {:impl (:impl fm)
+              :arg-map arg-map
+              :f f
+              :options fm})))
 
 (defn fw-impl-tf-wrapper
   [{:keys [f arg-map options]}]
@@ -197,8 +205,11 @@
 (defmethod fw-impl :naive [{:keys [f]}]
   `(fun-wrapper ~f))
 
+(defmethod fw-impl :tf [m]
+  `(fw-impl-tf-wrapper ~m))
+
 (defmethod fw-impl :default [m]
-  (fw-impl-tf-wrapper m))
+  (fw-impl (assoc m :impl :tf)))
 
 ;;;;;;;;;;; Utilities
 
@@ -230,3 +241,34 @@
 
 (prefer-method print-method IFunMap clojure.lang.IPersistentMap)
 (prefer-method print-method IFunMap java.util.Map)
+
+;;;;;;;;;;;; Spec your FunctionWrapper
+
+(util/opt-require [clojure.spec.alpha :as s]
+  (deftype SpecCheckingWrapper [wrapped spec]
+    ValueWrapper
+    (-unwrap [_ m k]
+      (let [v (-unwrap wrapped m k)]
+        (if (s/valid? spec v)
+          v
+          (throw (ex-info "Wrapper does not conform spec"
+                          {:key k :value v :explain (s/explain-data spec v)}))))))
+
+  (defn spec-wrapper [wrapped spec]
+    (SpecCheckingWrapper. wrapped spec))
+
+  (defmethod fw-impl :default [m]
+    (let [spec (get-in m [:options :spec])
+          wrapper (fw-impl-tf-wrapper m)]
+      (if spec `(spec-wrapper ~wrapper ~spec) wrapper))))
+
+;;;;;;;;;;;;;;;; Parallel support
+
+(util/opt-require [manifold.deferred :as d]
+  (defmethod let-form :default [fm binding]
+    (if (:par? fm)
+      [`d/let-flow (->> binding
+                        (partition 2)
+                        (mapcat (fn [[k v]] [k `(d/future ~v)]))
+                        vec)]
+      [`let binding])))

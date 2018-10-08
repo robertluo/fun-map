@@ -1,6 +1,7 @@
 (ns robertluo.fun-map-test
   (:require [clojure.test :refer :all]
-            [robertluo.fun-map :refer :all]))
+            [robertluo.fun-map :refer :all]
+            [manifold.deferred :as d]))
 
 (deftest fun-map-test
   (testing "computed attribute of other attributes"
@@ -99,9 +100,7 @@
 (deftest fw-test
   (testing "fw macro using normal destructure syntax to define wrapper"
     (is (= {:a 3 :b 5}
-           (fun-map {:a (fw {} 3) :b (fw {:keys [a]} (+ a 2))}))))
-  (testing "fw defined wrapper can be used as the function wrapped"
-    (is (= 3 ((fw {:keys [a]} a) {:a 3})))))
+           (fun-map {:a (fw {} 3) :b (fw {:keys [a]} (+ a 2))})))))
 
 (deftest fnk-focus-test
   (testing "fnk automatically focus on its dependencies, re-run when dependencies change"
@@ -123,3 +122,18 @@
           m (fun-map {:a (fw {:impl :naive} (swap! a inc))})]
       (is (= 1 (:a m)))
       (is (= 2 (:a m))))))
+
+(deftest spec-wrapper-test
+  (let [m (fun-map {:a/a 5
+                    :b (fw {:a/keys [a] :spec number?} (inc a))
+                    :c (fw {:keys [b] :spec number?} (str b))})]
+    (is (= 6 (:b m)))
+    (is (thrown? clojure.lang.ExceptionInfo (:c m)))))
+
+(deftest parallel-execution-test
+  (let [a (atom 5)
+        m (fun-map {:a (delay (Thread/sleep 200) @a)
+                    :b (delay (Thread/sleep 200) 20)
+                    :z (delay (Thread/sleep 350) (reset! a 10))
+                    :c (fw {:keys [z a b] :par? true} (* a b))})]
+    (is (= 100 (:c m)))))
