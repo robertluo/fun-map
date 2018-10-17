@@ -170,7 +170,7 @@ Any value implements `clojure.lang.IDeref` interface in a fun-map will automatic
 
 ```clojure
 (def m (fun-map {:xs (range 10)
-                 :count-keys ^:wrap (fn [m] (count (keys m)))
+                 :count-keys (fw {:as m} (count (keys m)))
                  :sum (fnk [xs] (apply + xs))
                  :cnt (fnk [xs] (count xs))
                  :avg (fnk [sum cnt] (/ sum cnt))}))
