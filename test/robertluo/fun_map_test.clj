@@ -28,6 +28,9 @@
            (merge (fun-map {:b (fnk [a] (inc a))})
                   {:a 5}))))
 
+  (testing "dissoc"
+    (is (= {:a 3} (dissoc (fun-map {:a 3 :b 4}) :b))))
+
   (testing "meta data support"
     (is (= {:msg "ok"} (meta (with-meta (fun-map {:a 3}) {:msg "ok"}))))))
 
