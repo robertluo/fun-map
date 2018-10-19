@@ -75,7 +75,7 @@
       (delegate-map (.empty m)))
 
     (without [k]
-      (delegate-map (.dissoc m k)))
+      (delegate-map (.without m k)))
 
     (count []
       (.count m))
