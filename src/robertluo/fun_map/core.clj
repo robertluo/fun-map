@@ -164,14 +164,14 @@
 
 (defn make-binding
   "prepare binding for let"
-  [naming {:keys [or as]}]
+  [m-sym naming {:keys [or as]}]
   (cond-> (mapcat
            (fn [[sym k]]
-             (let [g `(get ~'m ~k)
+             (let [g `(get ~m-sym ~k)
                    kf (if-let [v (get or sym)] `(or ~g ~v) g)]
                [sym kf]))
            naming)
-    as (concat [as 'm])
+    as (concat [as m-sym])
     true vec))
 
 (defmulti fw-impl
@@ -192,8 +192,9 @@
   [arg-map body]
   (let [{:keys [naming normal fm]} (destruct-map arg-map)
         arg-map (merge naming normal)
-        [lets binding] (let-form fm (make-binding naming normal))
-        f `(fn [~'m] (~lets ~binding ~@body))]
+        m-sym (gensym "fmk")
+        [lets binding] (let-form fm (make-binding m-sym naming normal))
+        f `(fn [~m-sym] (~lets ~binding ~@body))]
     (reduce (fn [rst wrapper]
               (fw-impl {:impl wrapper :arg-map arg-map :f rst :options fm}))
             `(fun-wrapper ~f)
