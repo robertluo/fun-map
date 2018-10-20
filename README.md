@@ -32,7 +32,7 @@
 (def m (merge m {:num (range 101) :numbers (fnk [num] (filter #(< % 50) num))}))
 (:average m) ;=> 24.5
 
-;; Showcase for parallelly computing value
+;; Showcase for parallel computing value
 ;; With manifold in your dependencies
 
 (def m
