@@ -44,7 +44,7 @@
 (time (:c m)) ;=> 600 in approx. 3000msec
 ```
 
-## Highlight of current Version (0.3.0)
+## Highlight of current Version (0.3)
 
  - `fw` macro now is more flexible, you can use `:wrappers` to specify underlying wrapper implementations.
  - optional spec checker with `:spec` specify the return value's spec. Will check if it conform the spec.
