@@ -1,7 +1,6 @@
 (ns robertluo.fun-map-test
   (:require [clojure.test :refer :all]
-            [robertluo.fun-map :refer :all]
-            [manifold.deferred :as d]))
+            [robertluo.fun-map :refer :all]))
 
 (deftest fun-map-test
   (testing "computed attribute of other attributes"
@@ -103,7 +102,7 @@
 (deftest fw-test
   (testing "fw macro using normal destructure syntax to define wrapper"
     (is (= {:a 3 :b 5}
-           (fun-map {:a (fw {} 3) :b (fw {:keys [a]} (+ a 2))})))))
+           (fun-map {:a (fw {} 3) :b (fw {:keys [a] :focus [a]} (+ a 2))})))))
 
 (deftest fnk-focus-test
   (testing "fnk automatically focus on its dependencies, re-run when dependencies change"
@@ -120,9 +119,9 @@
       (is (= 2 (:cnt a))))))
 
 (deftest naive-fw-test
-  (testing "choose naive function wrapper, no value will be cached"
+  (testing "choose empty wrappers, no value will be cached"
     (let [a (atom 0)
-          m (fun-map {:a (fw {:impl :naive} (swap! a inc))})]
+          m (fun-map {:a (fw {:wrappers []} (swap! a inc))})]
       (is (= 1 (:a m)))
       (is (= 2 (:a m))))))
 

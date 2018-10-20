@@ -46,14 +46,17 @@
    same syntax of clojure's associative destructure. You may use `:keys`, `:as`,
    `:or` inside.
 
-   Special key `:impl` specify implementation of function wrapper:
+   Special key `:wrappers` specify additional wrappers of function wrapper:
 
-    - `:naive` for naive one, no cache, no trace.
-    - default to cached traceable implementation. which supports special keys:
+    - `[]` for naive one, no cache, no trace.
+    - default to specable cached traceable implementation. which supports special keys:
+      - `:spec` a spec that the value must conform.
       - `:focus` A form that will be called to check if the function itself need
         to be called. It must be pure functional and very effecient.
       - `:trace` A trace function, if the value updated, it will be called with key
         and the function's return value.
+
+   Special option `:par? true` will make dependencies accessing parallel.
 
    Example:
 

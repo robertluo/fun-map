@@ -10,9 +10,7 @@
   (:import [clojure.lang
             IMapEntry
             APersistentMap])
-  (:require [robertluo.fun-map.util :as util]
-            [clojure.spec.alpha :as s]
-            [manifold.deferred :as d]))
+  (:require [robertluo.fun-map.util :as util]))
 
 (defprotocol ValueWrapper
   (-unwrap [this m k]
@@ -111,6 +109,8 @@
   [f]
   (->FunctionWrapper (fn [m _] (f m))))
 
+;;;;;;;;;;; Wrapper of wrapper
+
 (deftype CachedWrapper [wrapped a-val-pair focus-fn]
   ValueWrapper
   (-unwrap [_ m k]
@@ -120,6 +120,10 @@
         (first (swap! a-val-pair (fn [_] [(-unwrap wrapped m k) new-focus-val])))
         val))))
 
+(defn cache-wrapper
+  [wrapped focus]
+  (CachedWrapper. wrapped (atom [::unrealized ::unrealized]) focus))
+
 (deftype TracedWrapper [wrapped trace-fn]
   ValueWrapper
   (-unwrap [_ m k]
@@ -128,12 +132,9 @@
         (trace-fn k v))
       v)))
 
-(defn tf-fun-wrapper
-  "A traced, cached last implementation of fun-wrapper"
-  [f trace-fn focus-fn]
-  (-> (fun-wrapper f)
-      (TracedWrapper. trace-fn)
-      (CachedWrapper. (atom [::unrealized ::unrealized]) focus-fn)))
+(defn trace-wrapper
+  [wrapped trace]
+  (TracedWrapper. wrapped trace))
 
 ;;;;;;;;;; fw macro implementation
 
@@ -177,10 +178,14 @@
   "returns a form for fw macro implementation"
   :impl)
 
-(defmulti let-form (fn [fm binding] (:impl fm)))
-(defmethod let-form :default
-  [_ binding]
-  [`let binding])
+(defn let-form
+  "returns a pair first to let or equivalent, and the second to transformed bindings."
+  [_ bindings]
+  [`let bindings])
+
+(def default-wrappers
+  "Default wrappers for fw macro"
+  [:trace :cache])
 
 (defn make-fw-wrapper
   "construct fw"
@@ -189,27 +194,20 @@
         arg-map (merge naming normal)
         [lets binding] (let-form fm (make-binding naming normal))
         f `(fn [~'m] (~lets ~binding ~@body))]
-    (fw-impl {:impl (:impl fm)
-              :arg-map arg-map
-              :f f
-              :options fm})))
+    (reduce (fn [rst wrapper]
+              (fw-impl {:impl wrapper :arg-map arg-map :f rst :options fm}))
+            `(fun-wrapper ~f)
+            (or (:wrappers fm) default-wrappers))))
 
-(defn fw-impl-tf-wrapper
-  [{:keys [f arg-map options]}]
-  (let [{:keys [focus trace]} options]
-    `(tf-fun-wrapper
-      ~f
-      ~(when trace trace)
-      ~(when focus `(fn [~arg-map] ~focus)))))
+(defmethod fw-impl :trace
+  [{:keys [f options]}]
+  `(trace-wrapper ~f ~(:trace options)))
 
-(defmethod fw-impl :naive [{:keys [f]}]
-  `(fun-wrapper ~f))
-
-(defmethod fw-impl :tf [m]
-  `(fw-impl-tf-wrapper ~m))
-
-(defmethod fw-impl :default [m]
-  (fw-impl (assoc m :impl :tf)))
+(defmethod fw-impl :cache
+  [{:keys [f options arg-map]}]
+  (let [focus (when-let [focus (:focus options)]
+                `(fn [~arg-map] ~focus))]
+    `(cache-wrapper ~f ~focus)))
 
 ;;;;;;;;;;; Utilities
 
@@ -236,8 +234,8 @@
                ">>")))
 
 (defmethod print-method IFunMap [^IFunMap o ^java.io.Writer wtr]
-  (let [raw-entry (.rawSeq o)]
-    (print-method (into {} raw-entry) wtr)))
+  (let [raw-entries (.rawSeq o)]
+    (print-method (into {} raw-entries) wtr)))
 
 (prefer-method print-method IFunMap clojure.lang.IPersistentMap)
 (prefer-method print-method IFunMap java.util.Map)
@@ -251,24 +249,33 @@
       (let [v (-unwrap wrapped m k)]
         (if (s/valid? spec v)
           v
-          (throw (ex-info "Wrapper does not conform spec"
+          (throw (ex-info "Value unwrapped does not conform spec"
                           {:key k :value v :explain (s/explain-data spec v)}))))))
 
-  (defn spec-wrapper [wrapped spec]
+  (defn spec-wrapper
+    [wrapped spec]
     (SpecCheckingWrapper. wrapped spec))
 
-  (defmethod fw-impl :default [m]
-    (let [spec (get-in m [:options :spec])
-          wrapper (fw-impl-tf-wrapper m)]
-      (if spec `(spec-wrapper ~wrapper ~spec) wrapper))))
+  (def default-wrappers
+    "Redefine default wrappers to support spec"
+    [:spec :trace :cache])
+
+  (defmethod fw-impl :spec
+    [{:keys [f options]}]
+    (let [spec (:spec options)]
+      (if spec `(spec-wrapper ~f ~spec) f))))
 
 ;;;;;;;;;;;;;;;; Parallel support
 
-(util/opt-require [manifold.deferred :as d]
-  (defmethod let-form :default [fm binding]
+(util/opt-require [manifold.deferred]
+  (defn let-form
+    "redefine let-form check if :par? is truthy, then use manifold's let-flow
+     to replace let, and create future for value."
+    [fm bindings]
     (if (:par? fm)
-      [`d/let-flow (->> binding
-                        (partition 2)
-                        (mapcat (fn [[k v]] [k `(d/future ~v)]))
-                        vec)]
-      [`let binding])))
+      [`manifold.deferred/let-flow
+       (->> bindings
+            (partition 2)
+            (mapcat (fn [[k v]] [k `(manifold.deferred/future ~v)]))
+            vec)]
+      [`let bindings])))
