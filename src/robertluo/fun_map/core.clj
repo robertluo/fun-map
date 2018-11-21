@@ -26,6 +26,9 @@
     o))
 
 (deftype WrappedEntry [m ^clojure.lang.MapEntry entry]
+  clojure.lang.Seqable
+  (seq [this]
+    (seq [(.key this) (.val this)]))
   IMapEntry
   (key [_]
     (.key entry))
@@ -45,64 +48,87 @@
 (definterface IFunMap
   (rawSeq []))
 
-(defn delegate-map [^APersistentMap m]
-  (proxy [APersistentMap clojure.lang.IObj IFunMap java.io.Closeable] []
-    (meta []
-      (.meta m))
+(deftype DelegatedMap [^APersistentMap m]
+  IFunMap
+  (rawSeq [_]
+    (.seq m))
+  java.io.Closeable
+  (close [this]
+    (when-let [close-fn (some-> (.meta this) ::close-fn)]
+      (close-fn this)))
+  clojure.lang.MapEquivalence
+  clojure.lang.IHashEq
+  (hasheq [_]
+    (.hasheq m))
+  (hashCode [_]
+    (.hashCode m))
+  (equals [this other]
+    (clojure.lang.APersistentMap/mapEquals this other))
+  clojure.lang.IObj
+  (meta [_]
+    (.meta m))
+  (withMeta [_ mdata]
+    (DelegatedMap. (with-meta m mdata)))
+  clojure.lang.ILookup
+  (valAt [this k]
+    (some-> ^IMapEntry (.entryAt this k) (.val)))
+  (valAt [this k not-found]
+    (if (.containsKey this k)
+      (.valAt this k)
+      not-found))
+  clojure.lang.IPersistentMap
+  (count [_]
+    (.count m))
+  (empty [_]
+    (DelegatedMap. (.empty m)))
+  (cons [_ o]
+    (DelegatedMap.
+     (.cons m (if (instance? IFunMap o) (.rawSeq ^IFunMap o) o))))
+  (equiv [this other]
+    (.equals this other))
+  (containsKey [_ k]
+    (.containsKey m k))
+  (entryAt [this k]
+    (when (.containsKey m k)
+      (wrapped-entry this (.entryAt m k))))
+  (seq [this]
+    (clojure.lang.IteratorSeq/create (.iterator this)))
+  (iterator [this]
+    (let [ite (.iterator m)]
+      (reify java.util.Iterator
+        (hasNext [_]
+          (.hasNext ite))
+        (next [_]
+          (wrapped-entry this (.next ite))))))
+  (assoc [_ k v]
+    (DelegatedMap. (.assoc m k v)))
+  (assocEx [_ k v]
+    (DelegatedMap. (.assocEx m k v)))
+  (without [_ k]
+    (DelegatedMap. (.without m k)))
+  java.util.Map
+  (size [this]
+    (.count this))
+  (isEmpty [this]
+    (zero? (.count this)))
+  (containsValue [this v]
+    (boolean (some #{v} (vals this))))
+  (get [this k]
+    (.valAt this k))
+  (keySet [this]
+    (set (keys this)))
+  (values [this]
+    (vals this))
+  (entrySet [this]
+    (set this))
+  (put [_ _ _] (throw (UnsupportedOperationException.)))
+  (remove [_ _] (throw (UnsupportedOperationException.)))
+  (putAll [_ _] (throw (UnsupportedOperationException.)))
+  (clear [_] (throw (UnsupportedOperationException.))))
 
-    (rawSeq []
-      (.seq m))
-
-    (close []
-      (when-let [close-fn (some-> (.meta this) ::close-fn)]
-        (close-fn this)))
-
-    (withMeta [mdata]
-      (delegate-map (.withMeta m mdata)))
-
-    (containsKey [k]
-      (.containsKey m k))
-
-    (valAt
-      ([k]
-       (some-> (.entryAt this k) (.val)))
-      ([k not-found]
-       (if (.containsKey this k)
-         (.valAt this k)
-         not-found)))
-
-    (entryAt [k]
-      (when (.containsKey m k)
-        (wrapped-entry this (.entryAt m k))))
-
-    (assoc [k v]
-      (delegate-map (.assoc m k v)))
-
-    (assocEx [k v]
-      (delegate-map (.assocEx m k v)))
-
-    (empty []
-      (delegate-map (.empty m)))
-
-    (without [k]
-      (delegate-map (.without m k)))
-
-    (count []
-      (.count m))
-
-    (iterator []
-      (let [ite (.iterator m)]
-        (reify java.util.Iterator
-          (hasNext [_]
-            (.hasNext ite))
-          (next [_]
-            (wrapped-entry this (.next ite))))))
-
-    (cons [o]
-      (proxy-super cons (if (instance? IFunMap o) (.rawSeq ^IFunMap o) o)))
-
-    (seq []
-      (clojure.lang.IteratorSeq/create (.iterator this)))))
+(def delegate-map
+  "Return a delegated map"
+  ->DelegatedMap)
 
 ;;;;;;;;;;;; ValueWrappers
 
