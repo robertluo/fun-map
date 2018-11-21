@@ -25,10 +25,22 @@
     (recur (-unwrap o m k) m k)
     o))
 
-(defn wrapped-entry [m ^IMapEntry entry]
-  (proxy [clojure.lang.MapEntry] [(.key entry) (.val entry)]
-    (val []
-      (deep-unwrap (proxy-super val) m (.key this)))))
+(deftype WrappedEntry [m ^clojure.lang.MapEntry entry]
+  IMapEntry
+  (key [_]
+    (.key entry))
+  (val [_] 
+    (deep-unwrap (.val entry) m (.key entry)))
+
+  java.util.Map$Entry
+  (getKey [this]
+    (.key this))
+  (getValue [this]
+    (.val this)))
+
+(def wrapped-entry
+  "return a wrapped map entry"
+  ->WrappedEntry)
 
 (definterface IFunMap
   (rawSeq []))
