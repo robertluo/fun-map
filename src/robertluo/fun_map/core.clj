@@ -9,7 +9,7 @@
   invoking the wrapper."
   (:import [clojure.lang
             IMapEntry
-            APersistentMap])
+            IPersistentMap])
   (:require [robertluo.fun-map.util :as util]))
 
 (defprotocol ValueWrapper
@@ -32,7 +32,7 @@
   IMapEntry
   (key [_]
     (.key entry))
-  (val [_] 
+  (val [_]
     (deep-unwrap (.val entry) m (.key entry)))
 
   java.util.Map$Entry
@@ -48,7 +48,7 @@
 (definterface IFunMap
   (rawSeq []))
 
-(deftype DelegatedMap [^APersistentMap m]
+(deftype DelegatedMap [^IPersistentMap m]
   IFunMap
   (rawSeq [_]
     (.seq m))
@@ -59,14 +59,14 @@
   clojure.lang.MapEquivalence
   clojure.lang.IHashEq
   (hasheq [_]
-    (.hasheq m))
+    (.hasheq ^clojure.lang.IHashEq m))
   (hashCode [_]
     (.hashCode m))
   (equals [this other]
     (clojure.lang.APersistentMap/mapEquals this other))
   clojure.lang.IObj
   (meta [_]
-    (.meta m))
+    (.meta ^clojure.lang.IObj m))
   (withMeta [_ mdata]
     (DelegatedMap. (with-meta m mdata)))
   clojure.lang.ILookup

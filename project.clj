@@ -1,4 +1,4 @@
-(defproject robertluo/fun-map "0.3.2"
+(defproject robertluo/fun-map "0.3.3"
   :description "a map implementation blurs line between identity, state and function"
   :min-lein-version "2.7.0"
   :license {:name "Eclipse Public License"
@@ -6,6 +6,6 @@
   :dependencies [[org.clojure/clojure "1.9.0" :scope "provided"]]
   :profiles {:dev
              {:dependencies [[manifold "0.1.8"]]
-              :plugins      [[jonase/eastwood "0.2.9"]]}}
+              :plugins      [[jonase/eastwood "0.3.4"]]}}
   :eastwood
   {:exclude-linters [:unused-ret-vals :redefd-vars]})

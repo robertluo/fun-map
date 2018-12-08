@@ -139,3 +139,6 @@
                     :z (delay (Thread/sleep 350) (reset! a 10))
                     :c (fw {:keys [z a b] :par? true} (* a b))})]
     (is (= 100 (:c m)))))
+
+(deftest idempotent-test
+  (is (= {} (merge (fun-map (fun-map {})) {}))))
