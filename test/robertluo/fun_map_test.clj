@@ -142,3 +142,7 @@
 
 (deftest idempotent-test
   (is (= {} (merge (fun-map (fun-map {})) {}))))
+
+(deftest lookup-test
+  (is (= 3 (get (lookup identity) 3)))
+  (is (= [:foo :foo] (find (lookup identity) :foo))))

@@ -38,6 +38,12 @@
   (doseq [[_ _] m] nil)
   m)
 
+(defn lookup
+  "Returns a semi Associative instance by mapping single arity function f as
+  argument to return value."
+  [f]
+  (impl/lookup f))
+
 (defmacro fw
   "Returns a FunctionWrapper of an anonymous function defined by body.
 

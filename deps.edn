@@ -2,4 +2,8 @@
  :aliases
  {:dev
   {:extra-deps
-   {manifold {:mvn/version "0.1.8"}}}}}
+   {manifold {:mvn/version "0.1.8"}}}
+  :test
+  {:extra-deps
+   {lambdaisland/kaocha {:mvn/version "0.0-554"}}
+   :main-opts ["-m" "kaocha.runner"]}}}
