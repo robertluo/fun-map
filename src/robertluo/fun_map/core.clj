@@ -279,6 +279,15 @@
 (prefer-method print-method IFunMap clojure.lang.IPersistentMap)
 (prefer-method print-method IFunMap java.util.Map)
 
+(defn lookup
+  "Returns a ILookup object for calling f on k"
+  [f]
+  (reify clojure.lang.ILookup
+    (valAt [_ k]
+      (f k))
+    (valAt [this k not-found]
+      (or (.valAt this k) not-found))))
+
 ;;;;;;;;;;;; Spec your FunctionWrapper
 
 (util/opt-require [clojure.spec.alpha :as s]

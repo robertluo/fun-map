@@ -38,6 +38,11 @@
   (doseq [[_ _] m] nil)
   m)
 
+(defn lookup
+  "Returns a ILookup instance by turning function f into m like structure"
+  [f]
+  (impl/lookup f))
+
 (defmacro fw
   "Returns a FunctionWrapper of an anonymous function defined by body.
 
