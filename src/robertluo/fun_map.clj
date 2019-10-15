@@ -39,7 +39,8 @@
   m)
 
 (defn lookup
-  "Returns a ILookup instance by turning function f into m like structure"
+  "Returns a semi Associative instance by mapping single arity function f as
+  argument to return value."
   [f]
   (impl/lookup f))
 

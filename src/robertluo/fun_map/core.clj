@@ -282,7 +282,9 @@
 (defn lookup
   "Returns a ILookup object for calling f on k"
   [f]
-  (reify clojure.lang.ILookup
+  (reify clojure.lang.Associative
+    (entryAt [this k]
+      (clojure.lang.MapEntry. k (.valAt this k)))
     (valAt [_ k]
       (f k))
     (valAt [this k not-found]
