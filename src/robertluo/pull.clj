@@ -13,7 +13,7 @@
    A join in the pattern is a map with its keys corresponding keys in data, while
    value is another pattern. So this nested pattern can travel nested data:
      ```
-     (pull [:a {:c [:ca]}] {:a 3 :b 5 :c [{:ca 4, :cb "foo"} {:ca -1, :cb "bar"}])
+     (pull [:a {:c [:ca]}] {:a 3 :b 5 :c [{:ca 4, :cb :foo} {:ca -1, :cb :bar}])
      => {:a 3 :c [{:ca 4} {:ca -1}]}
      ```"
   [pattern data]
