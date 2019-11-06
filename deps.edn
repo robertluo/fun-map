@@ -3,6 +3,11 @@
  {:dev
   {:extra-deps
    {manifold {:mvn/version "0.1.8"}}}
+  :eastwood
+  {:extra-deps
+   {jonase/eastwood {:mvn/version "0.3.6"}}
+   :main-opts
+   ["-m" "eastwood.lint" {:source-paths ["src"]}]}
   :test
   {:extra-deps
    {lambdaisland/kaocha {:mvn/version "0.0-554"}}
