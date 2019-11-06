@@ -30,15 +30,16 @@
   clojure.lang.ILookup
   (-pull
     [this ptn]
-    (->> ptn
-         (map
-          (fn [to-find]
-            (if (join? to-find)
-              (find-join this to-find)
-              (when-let [v (.valAt this to-find)]
-                (when-not (some-> v meta :private)
-                  [to-find v])))))
-         (into {}))))
+    (let [privates (some-> this meta :private set)]
+      (->> ptn
+           (map
+            (fn [to-find]
+              (if (join? to-find)
+                (find-join this to-find)
+                (when-not (and privates (privates to-find))
+                  (when-let [v (.valAt this to-find)]
+                    [to-find v])))))
+           (into {})))))
 
 (comment
   (-pull {:a 3 :b 5} [:a])
