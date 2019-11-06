@@ -15,6 +15,11 @@
      ```
      (pull [:a {:c [:ca]}] {:a 3 :b 5 :c [{:ca 4, :cb :foo} {:ca -1, :cb :bar}])
      => {:a 3 :c [{:ca 4} {:ca -1}]}
-     ```"
+     ```
+    If some private key-values in your data you do not want pull to return, for
+    instance, password or other sensitive data, you can specify a `:private` meta
+    to the data, like:
+     `(pull [:a :b] ^:private #{:a} {:a :secret, b: 5}) => {:b 5}`
+  "
   [pattern data]
   (impl/-pull data pattern))
