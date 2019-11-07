@@ -44,12 +44,17 @@
 (time (:c m)) ;=> 600 in approx. 3000msec
 ```
 
-## Highlight of current Version (0.3)
+## 0.4 changes
+
+ - Introduce `robertluo.pull/pull` function to pull information.
+
+## 0.3 changes
 
  - `fw` macro now is more flexible, you can use `:wrappers` to specify underlying wrapper implementations.
  - optional spec checker with `:spec` specify the return value's spec. Will check if it conform the spec.
  - optional parallel execution with `:par? true` specified in `fw` and with [manifold](https://github.com/ztellman/manifold) in your projects dependencies.
  - `print-method` for better developing experience. When you print the content of a fun map, the wrapped function will not be invoked. You can use `(into {} m)` to print everything inside it though.
+ - introduce `lookup` function allowing transform any function as a part of map.
 
 > Breaking change since 0.1.x: normal function inside fun-map with `:wrap true` is not supported now, use `fw` macro instead.
 
@@ -204,6 +209,8 @@ A briefing:
  - `touch` function to force evaluating a fun-map.
  - `life-cycle-map` a simple life cycle management fun-map implementation.
  - `closeable` to create a value wrapper for components support `close` concept.
+ - `lookup` returns a ILookup instance from any single arity function
+ - `robertluo.pull/pull` returns a data structure from a ILookup (map is also supported)
 
 ## Usage
 
@@ -300,7 +307,7 @@ It is very easy to turn a [component](https://github.com/stuartsierra/component)
 
 ## License
 
-Copyright © 2018 Robertluo
+Copyright © 2018, 2019 Robertluo
 
 Distributed under the Eclipse Public License either version 1.0 or (at
 your option) any later version.
