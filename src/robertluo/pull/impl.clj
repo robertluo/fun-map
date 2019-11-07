@@ -1,8 +1,8 @@
-(ns robertluo.pull.impl)
+(ns ^:no-doc robertluo.pull.impl)
 
 (defprotocol Pullable
-  (-pull
-    [this ptn]))
+  (-pull [this ptn]
+    "return data structure pulling from this"))
 
 (defn join?
   "predict if ptn is a join grouup"
@@ -23,10 +23,12 @@
   )
 
 (extend-protocol Pullable
+
   clojure.lang.Sequential
   (-pull
     [this ptn]
     (map #(-pull % ptn) this))
+
   clojure.lang.ILookup
   (-pull
     [this ptn]
