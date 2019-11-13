@@ -32,7 +32,7 @@
   clojure.lang.ILookup
   (-pull
     [this ptn]
-    (let [privates (some-> this meta :private set)]
+    (let [privates (some-> this meta :private-pred)]
       (->> ptn
            (map
             (fn [to-find]

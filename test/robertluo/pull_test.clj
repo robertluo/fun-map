@@ -6,7 +6,7 @@
 (deftest pull-simple-tests
   (are [ptn expected]
       (= expected
-         (sut/pull ptn {:a 3 :b {:c "foo" :d :now}}))
+         (sut/pull {:a 3 :b {:c "foo" :d :now}} ptn))
     [:a] {:a 3}
     [{:b [:c :d]}] {:b {:c "foo" :d :now}}
     [:d] {} ;;non-existent value should not return
@@ -14,8 +14,8 @@
     ))
 
 (deftest private-value-tests
-  (testing "value has meta :private should not be pulled"
-    (is (= {} (sut/pull [:a] ^{:private #{:a}} {:a "ok"})))))
+  (testing "value has meta :private-pred should not be pulled"
+    (is (= {} (sut/pull ^{:private-pred #{:a}} {:a "ok"} [:a])))))
 
 (deftest fun-map-test
   (testing "fun-map and lookup can be pulled"
@@ -24,4 +24,4 @@
                  :sum     (fm/fnk [numbers] (apply + numbers))
                  :avg     (fm/fnk [numbers sum] (/ sum (count numbers)))
                  :dummy   (fm/lookup identity)})]
-      (is (= {:avg 9/2 :dummy {3 3}} (sut/pull [:avg {:dummy [3]}] data))))))
+      (is (= {:avg 9/2 :dummy {3 3}} (sut/pull data [:avg {:dummy [3]}]))))))
