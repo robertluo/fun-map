@@ -3,7 +3,7 @@
    instance" 
   (:require [robertluo.pull.impl :as impl]))
 
-(defn pull
+(def pull
   "Returns data specified by pattern inside data.
 
    data can be a ILookup instance (for example, a map, or a lookup of fun-map), or
@@ -20,10 +20,17 @@
      => {:a 3 :c [{:ca 4} {:ca -1}]}
      ```
 
-    If some private key-values in your data you do not want pull to return, for
-    instance, password or other sensitive data, you can specify a `:private-pred`
-    meta to the data, like:
-     `(pull [:a :b] ^:private-pred #{:a} {:a :secret, b: 5}) => {:b 5}`
+  A map (ILookup) has to specific a join to pull, otherwise its value will be returned
+  as :robertluo.pull/join-required.
   "
-  [data pattern]
-  (impl/pull data pattern))
+  impl/pull)
+
+(def private-attrs
+  "If some private key-values in your data you do not want pull to return, for
+   instance, password or other sensitive data, you can use this function to
+   hide some attributes:
+     `(private-attrs #{:hidden} {:a :hidden})`
+
+  Uses clojure 1.10 's meta extending protocol, can not work on prior version of
+  clojure"
+  impl/private-attrs)

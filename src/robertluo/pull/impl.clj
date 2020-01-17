@@ -11,7 +11,8 @@
 (extend-protocol Findable
   clojure.lang.ILookup
   (-find [this k]
-    [k (.valAt this k)]))
+    (when-let [v (.valAt this k)]
+      [k v])))
 
 (comment
  (-find {:a 1} :a))
@@ -29,9 +30,15 @@
     (mapv f x)
     (f x)))
 
-(defn all-findable?
-  [x]
-  (every? #(satisfies? Findable %) x))
+(def findable?
+  (partial satisfies? Findable))
+
+(def find-apply
+  (partial apply-seq (partial every? findable?)))
+
+(defn findable-seq?
+  [v]
+  (and (sequential? v) (every? findable? v)))
 
 (defn pull*
   [data ptn]
@@ -41,14 +48,28 @@
        (let [[local-k sub-ptn] (first k)
              [k sub-data] (-find data local-k)]
          (when k
-           (conj acc [k (apply-seq all-findable? #(pull* % sub-ptn) sub-data)])))
-       (conj acc (find data k))))
+           (conj acc [k (find-apply #(pull* % sub-ptn) sub-data)])))
+       (if-let [[k v] (-find data k)]
+         ;;for pullable sequence or value, a join is required
+         (conj acc [k (if (or (findable? v) (findable-seq? v))
+                        :robertluo.pull/join-required
+                        v)])
+         acc)))
    {}
    ptn))
 
 (defn pull
   [data ptn]
-  (apply-seq all-findable? #(pull* % ptn) data))
+  (find-apply #(pull* % ptn) data))
+
+(defn private-attrs
+  [pred m]
+  (with-meta m
+    {`-find
+     (fn [this k]
+       (when-let [v (get this k)]
+         (when (not (pred k))
+           [k v])))}))
 
 (comment
   (pull {:a [{:aa 3} {:aa 5} {:ab 6}]
