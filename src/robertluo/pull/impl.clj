@@ -1,50 +1,59 @@
-(ns ^:no-doc robertluo.pull.impl)
+(ns ^:no-doc robertluo.pull.impl
+  "Implementation of pull")
 
-(defprotocol Pullable
-  (-pull [this ptn]
-    "return data structure pulling from this"))
+(defprotocol Findable
+  :extend-via-metadata true
+  (-find [this k]
+    "returns a vector of k, v.
+     Introduce a new protocol rather than using existing interface
+     ILookup in order to let us to extend this in the future"))
+
+(extend-protocol Findable
+  clojure.lang.ILookup
+  (-find [this k]
+    [k (.valAt this k)]))
+
+(comment
+ (-find {:a 1} :a))
 
 (defn join?
-  "predict if ptn is a join grouup"
+  "predict if ptn is a join group"
   [ptn]
-  (map? ptn))
+  (and (map? ptn) (= 1 (count ptn))))
 
-(defn find-join
-  [m to-find]
-  (->> to-find
-       (map
-        (fn [[k p]]
-          (when-let [v (get m k)]
-            [k (-pull v p)])))
-       (into {})))
+(defn apply-seq
+  "apply f to x when x is sequential and (pred x) is true, or simply
+   apply f to x"
+  [pred f x]
+  (if (and (sequential? x) pred)
+    (mapv f x)
+    (f x)))
 
-(comment
-  (find-join {:a {:b 5}} {:a [:b :c]})
-  )
+(defn all-findable?
+  [x]
+  (every? #(satisfies? Findable %) x))
 
-(extend-protocol Pullable
+(defn pull*
+  [data ptn]
+  (reduce
+   (fn [acc k]
+     (if (join? k)
+       (let [[local-k sub-ptn] (first k)
+             [k sub-data] (-find data local-k)]
+         (when k
+           (conj acc [k (apply-seq all-findable? #(pull* % sub-ptn) sub-data)])))
+       (conj acc (find data k))))
+   {}
+   ptn))
 
-  clojure.lang.Sequential
-  (-pull
-    [this ptn]
-    (map #(-pull % ptn) this))
-
-  clojure.lang.ILookup
-  (-pull
-    [this ptn]
-    (let [privates (some-> this meta :private-pred)]
-      (->> ptn
-           (map
-            (fn [to-find]
-              (if (join? to-find)
-                (find-join this to-find)
-                (when-not (and privates (privates to-find))
-                  (when-let [v (.valAt this to-find)]
-                    [to-find v])))))
-           (into {})))))
+(defn pull
+  [data ptn]
+  (apply-seq all-findable? #(pull* % ptn) data))
 
 (comment
-  (-pull {:a 3 :b 5} [:a])
-  (-pull [{:a 3 :b 5} {:a 5} {:b 6}] [:a])
-  (-pull {:a {:b 5 :c 6} :d 5} [{:a [:b]} :d])
+  (pull {:a [{:aa 3} {:aa 5} {:ab 6}]
+         :b {:bb :foo}
+         :c 5}
+        [{:a [:aa]} {:b [:bb]} :c])
+  (pull [{:a 3} {:a 4} {:b 5}] [:a])
   )

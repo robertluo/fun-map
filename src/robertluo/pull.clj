@@ -26,4 +26,4 @@
      `(pull [:a :b] ^:private-pred #{:a} {:a :secret, b: 5}) => {:b 5}`
   "
   [data pattern]
-  (impl/-pull data pattern))
+  (impl/pull data pattern))

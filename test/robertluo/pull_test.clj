@@ -4,18 +4,17 @@
             [clojure.test :refer [deftest is testing are]]))
 
 (deftest pull-simple-tests
-  (are [ptn expected]
-      (= expected
-         (sut/pull {:a 3 :b {:c "foo" :d :now}} ptn))
-    [:a] {:a 3}
-    [{:b [:c :d]}] {:b {:c "foo" :d :now}}
-    [:d] {} ;;non-existent value should not return
-    [:a {:b [:e]}] {:a 3 :b {}}
-    ))
-
-(deftest private-value-tests
-  (testing "value has meta :private-pred should not be pulled"
-    (is (= {} (sut/pull ^{:private-pred #{:a}} {:a "ok"} [:a])))))
+  (testing "regular pull pattern"
+    (are [ptn expected]
+        (= expected
+           (sut/pull {:a 3 :b {:c "foo" :d :now}} ptn))
+        [:a] {:a 3}
+        [{:b [:c :d]}] {:b {:c "foo" :d :now}}
+        [:a {:b [:e]}] {:a 3 :b {}}))
+  (testing "when pull on a non-existent value, it will not included in result"
+    (is (= {:b 5} (sut/pull {:b 5} [:a :b]))))
+  (testing "pulling a map without specifying join will return an empty map"
+    (is (= {:a {}} (sut/pull {:a {:b "foo"}} [:a])))))
 
 (deftest fun-map-test
   (testing "fun-map and lookup can be pulled"
