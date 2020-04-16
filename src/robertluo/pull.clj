@@ -11,12 +11,12 @@
 
    A pattern is a vector, contains keys or joins, with keys in patterns, pull
    acts just like clojure.core/select-keys:
-     `(pull [:a :c] {:a 3 :b 5 :c 6}) => {:a 3 :c 6}`
+     `(pull {:a 3 :b 5 :c 6} [:a :c]) => {:a 3 :c 6}`
    A join in the pattern is a map with its keys corresponding keys in data, while
    value is another pattern. So this nested pattern can travel nested data:
 
      ```
-     (pull [:a {:c [:ca]}] {:a 3 :b 5 :c [{:ca 4, :cb :foo} {:ca -1, :cb :bar}])
+     (pull {:a 3 :b 5 :c [{:ca 4, :cb :foo} {:ca -1, :cb :bar}]} [:a {:c [:ca]}])
      => {:a 3 :c [{:ca 4} {:ca -1}]}
      ```
 
