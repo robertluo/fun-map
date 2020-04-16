@@ -10,3 +10,7 @@ pom.xml.asc
 .cpcache/
 .rebel*
 .eastwood
+.history/
+.settings/
+.project
+.classpath
