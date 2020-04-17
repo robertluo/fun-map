@@ -1,7 +1,8 @@
 (ns robertluo.pull
   "Simple pull API inspired by datomic Pull API, but can be used on any ILookup
    instance" 
-  (:require [robertluo.pull.impl :as impl]))
+  (:require [robertluo.pull.impl :as impl]
+            [robertluo.fun-map.util :as util]))
 
 (def pull
   "Returns data specified by pattern inside data.
@@ -34,3 +35,19 @@
   Uses clojure 1.10 's meta extending protocol, can not work on prior version of
   clojure"
   impl/private-attrs)
+
+(util/opt-require 
+ [clojure.spec.alpha :as s]
+ (s/def ::join any?) ;;forward declare
+ (s/def ::key any?)
+ (s/def ::pull-spec (s/or :map ::join
+                          :any-key ::key))
+ (s/def ::pattern (s/coll-of ::pull-spec :kind vector?))
+ (s/def ::join (s/map-of ::key ::pattern))
+ (s/def ::pullable #(satisfies? impl/Findable %))
+ (s/def ::data (s/or :pullable ::pullable
+                     :sequence (s/coll-of ::pullable)))
+ (s/fdef pull
+   :args (s/cat :data ::data :pattern ::pattern)
+   :rtn ::data)
+ )

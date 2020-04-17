@@ -1,7 +1,7 @@
 (ns robertluo.fun-map.core-test
   (:require
    [robertluo.fun-map.core :as sut]
-   [clojure.test :refer :all]))
+   [clojure.test :refer [deftest is]]))
 
 (deftest destruct-map-test
   (is (= '{:naming {a :a b :b c :c e :d/e f :d/f}
