@@ -6,6 +6,8 @@
   :dependencies [[org.clojure/clojure "1.10.1" :scope "provided"]]
   :profiles {:dev
              {:dependencies [[manifold "0.1.8"]]
-              :plugins      [[jonase/eastwood "0.3.4"]]}}
+              :plugins      [[jonase/eastwood "0.3.11"]]}
+             :kaocha [:dev {:dependencies [[lambdaisland/kaocha "1.0-612"]]}]}
+  :aliases {"kaocha" ["with-profile" "+kaocha" "run" "-m" "kaocha.runner"]}
   :eastwood
   {:exclude-linters [:unused-ret-vals :redefd-vars]})

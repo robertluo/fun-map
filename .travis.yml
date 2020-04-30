@@ -1,2 +1,2 @@
 language: clojure
-script: lein do test, check, eastwood
+script: lein do kaocha, check, eastwood

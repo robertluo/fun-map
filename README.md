@@ -304,6 +304,11 @@ It is very easy to turn a [component](https://github.com/stuartsierra/component)
     (lifecycle/start component)
     #(lifecycle/stop component)))
 ```
+## Development
+
+Fun-map using [kaocha](https://github.com/lambdaisland/kaocha) as test runner.
+
+ - use `lein kaocha --watch` to automatically run tests whenever code changes.
 
 ## License
 
