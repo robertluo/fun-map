@@ -1,4 +1,4 @@
-(defproject robertluo/fun-map "0.4.3"
+(defproject robertluo/fun-map "0.4.4-SNAPSHOT"
   :description "a map implementation blurs line between identity, state and function"
   :min-lein-version "2.7.0"
   :license {:name "Eclipse Public License"
