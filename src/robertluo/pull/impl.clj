@@ -78,3 +78,54 @@
         [{:a [:aa]} {:b [:bb]} :c])
   (pull [{:a 3} {:a 4} {:b 5}] [:a])
   )
+
+(defn construct
+  [xf entries]
+  (transduce xf 
+             (fn
+               ([acc] acc)
+               ([acc [ks v]]
+                (assoc-in acc ks v)))
+             {} entries))
+
+(declare pattern->paths)
+
+(defn elem-of
+ [root elem]
+ (if (join? elem)
+   (let [[k v] (first elem)]
+     #(pattern->paths (conj root k) v))
+   [(conj root elem)]))
+
+(defn pattern->paths
+  [root pattern]
+  (mapcat #(trampoline elem-of root %) pattern))
+
+(defn seq-get
+  [x k not-found]
+  (if (every? findable? x)
+    (mapv #(get % k not-found) x)
+    (get x k not-found)))
+
+(defn seq-get-in
+  "Returns the value in a nested associative structure,
+  where ks is a sequence of keys. Returns nil if the key
+  is not present, or the not-found value if supplied."
+  ([m ks]
+   (loop [sentinel (Object.)
+          m m
+          ks (seq ks)]
+     (if ks
+       (let [m (seq-get m (first ks) sentinel)]
+         (when-not (identical? sentinel m)
+           (recur sentinel m (next ks))))
+       m))))
+
+(defn select-paths
+  [data paths]
+  (construct (map (fn [path]
+                    [path (get-in data path)])) paths))
+
+(defn pull2
+  [data pattern]
+  (select-paths data (pattern->paths [] pattern)))
