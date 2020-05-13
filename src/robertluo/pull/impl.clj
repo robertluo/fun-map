@@ -22,11 +22,14 @@
   [ptn]
   (and (map? ptn) (= 1 (count ptn))))
 
+(defn seq-set? [x]
+  (or (sequential? x) (set? x)))
+
 (defn apply-seq
   "apply f to x when x is sequential and (pred x) is true, or simply
    apply f to x"
   [pred f x]
-  (if (and (sequential? x) pred)
+  (if (and (seq-set? x) (pred x))
     (mapv f x)
     (f x)))
 
@@ -38,7 +41,10 @@
 
 (defn findable-seq?
   [v]
-  (and (sequential? v) (every? findable? v)))
+  (and (seq-set? v) (every? findable? v)))
+
+(defn all-findable? [v]
+  (or (findable? v) (findable-seq? v)))
 
 (defn pull*
   [data ptn]
@@ -51,7 +57,7 @@
            (conj acc [k (find-apply #(pull* % sub-ptn) sub-data)])))
        (if-let [[k v] (-find data k)]
          ;;for pullable sequence or value, a join is required
-         (conj acc [k (if (or (findable? v) (findable-seq? v))
+         (conj acc [k (if (all-findable? v)
                         :robertluo.pull/join-required
                         v)])
          acc)))
@@ -77,8 +83,13 @@
          :c 5}
         [{:a [:aa]} {:b [:bb]} :c])
   (pull [{:a 3} {:a 4} {:b 5}] [:a])
+  (pull #{{:a 3} {:a 5}} [:a])
+  (pull {:a 3 :b {:c "foo" :d :now}} [:a])
   )
 
+;;=============================
+;; TODO new pull implementation
+;; 
 (defn construct
   [xf entries]
   (transduce xf 

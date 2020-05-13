@@ -1,4 +1,4 @@
-(ns robertluo.pull.impl-test
+(ns ^:kaocha/skip robertluo.pull.impl-test
   (:require
    [clojure.test :refer [deftest is are]]
    [robertluo.pull.impl :as sut]))
@@ -16,7 +16,9 @@
 (deftest pull
   (let [data {:a {:a1 {:a11 "foo"
                        :a12 :bar}
-                  :a2 {:a21 [3 5]}}
+                  :a2 {:a21 [3 5]}
+                  :a3 [{:v1 31} {:v1 32}]}
               :b 8}]
     (are [pattern exp] (= exp (sut/pull2 data pattern))
-      [{:a [{:a1 [:a12]}]} :b] {:a {:a1 {:a12 :bar}} :b 8})))
+      [{:a [{:a1 [:a12]}]} :b] {:a {:a1 {:a12 :bar}} :b 8}
+      [{:a [{:a3 [:v1]}]}] {:a {:a3 [{:v1 31} {:v1 32}]}})))
