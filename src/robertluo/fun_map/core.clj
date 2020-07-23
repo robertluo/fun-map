@@ -13,12 +13,21 @@
   (:require [robertluo.fun-map.util :as util]))
 
 (defprotocol ValueWrapper
+  (-wrapped? [this])
   (-unwrap [this m k]
     "unwrap the real value from a wrapper on the key of k"))
 
+(extend-type Object
+  ValueWrapper
+  (-wrapped? [_] false))
+
+(extend-type nil
+  ValueWrapper
+  (-wrapped? [_] false))
+
 (defn value-wrapper?
   [o]
-  (satisfies? ValueWrapper o))
+  (-wrapped? o))
 
 (defn deep-unwrap [o m k]
   (if (value-wrapper? o)
@@ -134,11 +143,13 @@
 
 (extend-protocol ValueWrapper
   clojure.lang.IDeref
+  (-wrapped? [_] true)
   (-unwrap [d _ _]
     (deref d)))
 
 (deftype FunctionWrapper [f]
   ValueWrapper
+  (-wrapped? [_] true)
   (-unwrap [_ m k]
     (f m k)))
 
@@ -151,6 +162,7 @@
 
 (deftype CachedWrapper [wrapped a-val-pair focus-fn]
   ValueWrapper
+  (-wrapped? [_] true)
   (-unwrap [_ m k]
     (let [[val focus-val] @a-val-pair
           new-focus-val (if focus-fn (focus-fn m) ::unrealized)]
@@ -164,6 +176,7 @@
 
 (deftype TracedWrapper [wrapped trace-fn]
   ValueWrapper
+  (-wrapped? [_] true)
   (-unwrap [_ m k]
     (let [v (-unwrap wrapped m k)]
       (when-let [trace-fn (or trace-fn (some-> m meta ::trace))]
@@ -295,6 +308,7 @@
 (util/opt-require [clojure.spec.alpha :as s]
   (deftype SpecCheckingWrapper [wrapped spec]
     ValueWrapper
+    (-wrapped? [_] true)
     (-unwrap [_ m k]
       (let [v (-unwrap wrapped m k)]
         (if (s/valid? spec v)
