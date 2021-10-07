@@ -34,7 +34,7 @@
     (recur (-unwrap o m k) m k)
     o))
 
-(deftype WrappedEntry [m ^clojure.lang.MapEntry entry]
+(deftype WrappedEntry [m ^clojure.lang.IMapEntry entry]
   clojure.lang.Seqable
   (seq [this]
     (seq [(.key this) (.val this)]))
