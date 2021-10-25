@@ -1,6 +1,6 @@
 # fun-map, blurs the line between identity, state and function
 
-[![Build Status](https://travis-ci.org/robertluo/fun-map.svg?branch=master)](https://travis-ci.org/robertluo/fun-map)
+[![CI](https://github.com/robertluo/fun-map/actions/workflows/main.yml/badge.svg)](https://github.com/robertluo/fun-map/actions/workflows/main.yml)
 [![Clojars Project](https://img.shields.io/clojars/v/robertluo/fun-map.svg)](https://clojars.org/robertluo/fun-map)
 [![cljdoc badge](https://cljdoc.xyz/badge/robertluo/fun-map)](https://cljdoc.xyz/d/robertluo/fun-map/CURRENT)
 
