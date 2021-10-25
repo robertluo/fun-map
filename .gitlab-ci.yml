@@ -1,5 +1,0 @@
-image: clojure
-
-build:
-  script:
-    - lein do check, kaocha, eastwood
