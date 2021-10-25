@@ -136,9 +136,9 @@
   (let [a (atom 5)
         m (fun-map {:a (delay (Thread/sleep 200) @a)
                     :b (delay (Thread/sleep 200) 20)
-                    :z (delay (Thread/sleep 350) (reset! a 10))
-                    :c (fw {:keys [z a b] :par? true} (* a b))})]
-    (is (= 100 (:c m)))))
+                    :z (delay (Thread/sleep 100) (reset! a 10))
+                    :c (fw {:keys [a b z] :par? true} (* z b))})]
+    (is (= 200 (:c m)))))
 
 (deftest idempotent-test
   (is (= {} (merge (fun-map (fun-map {})) {}))))
