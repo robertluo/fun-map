@@ -43,12 +43,16 @@
 
 (time (:c m)) ;=> 600 in approx. 3000msec
 ```
+## Changes
 
-## 0.4 changes
+### 0.5
+ - Change version naming convention from `major.minor.patch` to `major.minor.commit-count`.
+ 
+### 0.4
 
  - Introduce `robertluo.pull/pull` function to pull information.
 
-## 0.3 changes
+### 0.3
 
  - `fw` macro now is more flexible, you can use `:wrappers` to specify underlying wrapper implementations.
  - optional spec checker with `:spec` specify the return value's spec. Will check if it conform the spec.
