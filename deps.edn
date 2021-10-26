@@ -1,7 +1,8 @@
 {:paths ["src"]
  :aliases
  {:dev
-  {:extra-deps
+  {:extra-paths ["test"]
+   :extra-deps
    {manifold/manifold {:mvn/version "0.1.9"}}}
   :build
   {:deps {io.github.seancorfield/build-clj
