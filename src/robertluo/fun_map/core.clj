@@ -9,7 +9,8 @@
   invoking the wrapper."
   (:import [clojure.lang
             IMapEntry
-            IPersistentMap])
+            IPersistentMap
+            ITransientMap])
   (:require [robertluo.fun-map.util :as util]))
 
 (defprotocol ValueWrapper
@@ -56,6 +57,22 @@
 
 (definterface IFunMap
   (rawSeq []))
+
+(declare ->DelegatedMap)
+
+;;Support transient
+(deftype TransientDelegatedMap [^ITransientMap tm]
+  ITransientMap
+  (conj [_ v] (TransientDelegatedMap. (.conj tm v)))
+  (persistent [_] (->DelegatedMap (persistent! tm)))
+  ;;ITransientAssociative
+  (assoc [_ k v] (TransientDelegatedMap. (.assoc tm k v)))
+  ;;ILookup
+  (valAt [this k] (.valAt this k nil))
+  (valAt [_ k not-found] (.valAt (->DelegatedMap (persistent! tm)) k not-found))
+
+  (without [_ k] (TransientDelegatedMap. (.without tm k)))
+  (count [_] (.count tm)))
 
 (deftype DelegatedMap [^IPersistentMap m]
   IFunMap
@@ -133,7 +150,11 @@
   (put [_ _ _] (throw (UnsupportedOperationException.)))
   (remove [_ _] (throw (UnsupportedOperationException.)))
   (putAll [_ _] (throw (UnsupportedOperationException.)))
-  (clear [_] (throw (UnsupportedOperationException.))))
+  (clear [_] (throw (UnsupportedOperationException.)))
+
+  clojure.lang.IEditableCollection
+  (asTransient [_]
+    (TransientDelegatedMap. (transient m))))
 
 (def delegate-map
   "Return a delegated map"
