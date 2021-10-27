@@ -69,10 +69,19 @@
   (assoc [_ k v] (TransientDelegatedMap. (.assoc tm k v)))
   ;;ILookup
   (valAt [this k] (.valAt this k nil))
-  (valAt [_ k not-found] (.valAt (->DelegatedMap (persistent! tm)) k not-found))
+  (valAt [this k not-found]
+    (if-let [^clojure.lang.IMapEntry entry (.entryAt this k)]
+      (.val entry)
+      not-found))
 
   (without [_ k] (TransientDelegatedMap. (.without tm k)))
-  (count [_] (.count tm)))
+  (count [_] (.count tm))
+
+  clojure.lang.ITransientAssociative2
+  (containsKey [_ k]
+    (.containsKey tm k))
+  (entryAt [_ k]
+    (wrapped-entry tm (.entryAt tm k))))
 
 (deftype DelegatedMap [^IPersistentMap m]
   IFunMap
