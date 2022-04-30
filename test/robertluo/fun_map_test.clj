@@ -1,6 +1,6 @@
 (ns robertluo.fun-map-test
-  (:require [clojure.test :refer :all]
-            [robertluo.fun-map :refer :all]))
+  (:require [clojure.test :refer [deftest testing is]]
+            [robertluo.fun-map :refer [fnk fun-map closeable life-cycle-map touch halt! fw lookup]]))
 
 (deftest fun-map-test
   (testing "computed attribute of other attributes"

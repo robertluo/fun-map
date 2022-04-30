@@ -3,7 +3,7 @@
    [robertluo.fun-map.core :as sut]
    [clojure.test :refer [deftest is]]))
 
-(deftest destruct-map-test
+#_(deftest destruct-map-test
   (is (= '{:naming {a :a b :b c :c e :d/e f :d/f}
            :normal {:as this :or {a 3}}
            :fm     {:focus [a b]}}
