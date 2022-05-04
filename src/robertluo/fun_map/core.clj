@@ -1,55 +1,9 @@
 (ns ^:no-doc robertluo.fun-map.core
-  "implementation of fun-maps.
-
-  a fun-map delegates its storage to underlying map m,
-  m stores k,v pair with value wrapped inside a wrapper,
-  when requested an entry from a fun-map, instead of
-  returning map entry like an ordinary map, it returns
-  a special version of entry, evaluate it's value by
-  invoking the wrapper."
+  "implementation of fun-maps"
   (:import [clojure.lang
             IMapEntry
             IPersistentMap
-            ITransientMap])
-  (:require [robertluo.fun-map.util :as util]
-            [robertluo.fun-map.protocols :as proto]))
-
-(extend-type Object
-  proto/ValueWrapper
-  (-wrapped? [_] false))
-
-(extend-type nil
-  proto/ValueWrapper
-  (-wrapped? [_] false))
-
-(defn value-wrapper?
-  [o]
-  (proto/-wrapped? o))
-
-(defn deep-unwrap [o m k]
-  (if (value-wrapper? o)
-    (recur (proto/-unwrap o m k) m k)
-    o))
-
-(deftype WrappedEntry [m ^clojure.lang.IMapEntry entry]
-  clojure.lang.Seqable
-  (seq [this]
-    (seq [(.key this) (.val this)]))
-  IMapEntry
-  (key [_]
-    (.key entry))
-  (val [_]
-    (deep-unwrap (.val entry) m (.key entry)))
-
-  java.util.Map$Entry
-  (getKey [this]
-    (.key this))
-  (getValue [this]
-    (.val this)))
-
-(def wrapped-entry
-  "return a wrapped map entry"
-  ->WrappedEntry)
+            ITransientMap]))
 
 (definterface IFunMap
   (rawSeq []))
@@ -57,12 +11,12 @@
 (declare ->DelegatedMap)
 
 ;;Support transient
-(deftype TransientDelegatedMap [^ITransientMap tm]
+(deftype TransientDelegatedMap [^ITransientMap tm fn-entry]
   ITransientMap
-  (conj [_ v] (TransientDelegatedMap. (.conj tm v)))
-  (persistent [_] (->DelegatedMap (persistent! tm)))
+  (conj [_ v] (TransientDelegatedMap. (.conj tm v) fn-entry))
+  (persistent [_] (->DelegatedMap (persistent! tm) fn-entry))
   ;;ITransientAssociative
-  (assoc [_ k v] (TransientDelegatedMap. (.assoc tm k v)))
+  (assoc [_ k v] (TransientDelegatedMap. (.assoc tm k v) fn-entry))
   ;;ILookup
   (valAt [this k] (.valAt this k nil))
   (valAt [this k not-found]
@@ -70,16 +24,19 @@
       (.val entry)
       not-found))
 
-  (without [_ k] (TransientDelegatedMap. (.without tm k)))
+  (without [_ k] (TransientDelegatedMap. (.without tm k) fn-entry))
   (count [_] (.count tm))
 
   clojure.lang.ITransientAssociative2
   (containsKey [_ k]
     (.containsKey tm k))
   (entryAt [_ k]
-    (wrapped-entry tm (.entryAt tm k))))
+    (fn-entry tm (.entryAt tm k))))
 
-(deftype DelegatedMap [^IPersistentMap m]
+;; DelegatedMap takes a map `m` and delegates most feature to it.
+;; The magic happens on function `fn-entry`, which takes the delegated map
+;; itself and a pair of kv as arguments. Returns a pair of kv.
+(deftype DelegatedMap [^IPersistentMap m fn-entry]
   IFunMap
   (rawSeq [_]
     (.seq m))
@@ -99,7 +56,7 @@
   (meta [_]
     (.meta ^clojure.lang.IObj m))
   (withMeta [_ mdata]
-    (DelegatedMap. (with-meta m mdata)))
+    (DelegatedMap. (with-meta m mdata) fn-entry))
   clojure.lang.ILookup
   (valAt [this k]
     (some-> ^IMapEntry (.entryAt this k) (.val)))
@@ -111,32 +68,33 @@
   (count [_]
     (.count m))
   (empty [_]
-    (DelegatedMap. (.empty m)))
+    (DelegatedMap. (.empty m) fn-entry))
   (cons [_ o]
     (DelegatedMap.
-     (.cons m (if (instance? IFunMap o) (.rawSeq ^IFunMap o) o))))
+     (.cons m (if (instance? IFunMap o) (.rawSeq ^IFunMap o) o))
+     fn-entry))
   (equiv [this other]
     (.equals this other))
   (containsKey [_ k]
     (.containsKey m k))
-  (entryAt [this k]
+  (entryAt [_ k]
     (when (.containsKey m k)
-      (wrapped-entry this (.entryAt m k))))
+      (fn-entry m (.entryAt m k))))
   (seq [this]
     (clojure.lang.IteratorSeq/create (.iterator this)))
-  (iterator [this]
+  (iterator [_]
     (let [ite (.iterator m)]
       (reify java.util.Iterator
         (hasNext [_]
           (.hasNext ite))
         (next [_]
-          (wrapped-entry this (.next ite))))))
+          (fn-entry m (.next ite))))))
   (assoc [_ k v]
-    (DelegatedMap. (.assoc m k v)))
+    (DelegatedMap. (.assoc m k v) fn-entry))
   (assocEx [_ k v]
-    (DelegatedMap. (.assocEx m k v)))
+    (DelegatedMap. (.assocEx m k v) fn-entry))
   (without [_ k]
-    (DelegatedMap. (.without m k)))
+    (DelegatedMap. (.without m k) fn-entry))
   java.util.Map
   (size [this]
     (.count this))
@@ -159,34 +117,22 @@
 
   clojure.lang.IEditableCollection
   (asTransient [_]
-    (TransientDelegatedMap. (transient m))))
+    (TransientDelegatedMap. (transient m) fn-entry)))
 
-(def delegate-map
+(defn- fn-entry-adapter
+  [fn-entry]
+  (fn [m ^IMapEntry entry]
+    (when-let [[k v] (fn-entry m [(.key entry) (.val entry)])]
+      (clojure.lang.MapEntry. k v))))
+
+(defn delegate-map
   "Return a delegated map"
-  ->DelegatedMap)
-
-;;;;;;;;;;;; ValueWrappers
-
-(extend-protocol proto/ValueWrapper
-  clojure.lang.IDeref
-  (-wrapped? [_] true)
-  (-unwrap [d _ _]
-    (deref d)))
-
-;;;;;;;;;;; Utilities
-
-(deftype CloseableValue [value close-fn]
-  clojure.lang.IDeref
-  (deref [_]
-    value)
-  java.io.Closeable
-  (close [_]
-    (close-fn)))
+  [m fn-entry]
+  (->DelegatedMap m (fn-entry-adapter fn-entry)))
 
 (defn fun-map?
   [o]
   (instance? IFunMap o))
-
 
 (defmethod print-method IFunMap [^IFunMap o ^java.io.Writer wtr]
   (let [raw-entries (.rawSeq o)]
@@ -194,14 +140,3 @@
 
 (prefer-method print-method IFunMap clojure.lang.IPersistentMap)
 (prefer-method print-method IFunMap java.util.Map)
-
-(defn lookup
-  "Returns a ILookup object for calling f on k"
-  [f]
-  (reify clojure.lang.Associative
-    (entryAt [this k]
-      (clojure.lang.MapEntry. k (.valAt this k)))
-    (valAt [_ k]
-      (f k))
-    (valAt [this k not-found]
-      (or (.valAt this k) not-found))))

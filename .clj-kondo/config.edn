@@ -1,0 +1,1 @@
+{:lint-as {robertluo.fun-map/fnk clojure.core/fn}}
