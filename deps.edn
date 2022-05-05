@@ -1,9 +1,11 @@
 {:paths ["src"]
  :aliases
- {:dev
+ {:test
   {:extra-paths ["test"]
    :extra-deps
-   {manifold/manifold {:mvn/version "0.2.3"}}}
+   {manifold/manifold {:mvn/version "0.2.3"}
+    lambdaisland/kaocha {:mvn/version "1.66.1034"}}
+   :exec-fn kaocha.runner/exec-fn}
   :build
   {:deps {io.github.seancorfield/build-clj
           {:git/tag "v0.8.0" :git/sha "9bd8b8a"}}
@@ -12,8 +14,4 @@
   {:extra-deps
    {jonase/eastwood {:mvn/version "1.2.3"}}
    :main-opts
-   ["-m" "eastwood.lint" {:source-paths ["src"]}]}
-  :test
-  {:extra-deps
-   {lambdaisland/kaocha {:mvn/version "1.66.1034"}}
-   :main-opts ["-m" "kaocha.runner"]}}}
+   ["-m" "eastwood.lint" {:source-paths ["src"]}]}}}

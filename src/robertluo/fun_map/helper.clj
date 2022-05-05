@@ -10,7 +10,7 @@
   (util/opt-require
    '[manifold.deferred]
    (if (:par? fm)
-     [`maniflold.deferred/lef-flow
+     [`manifold.deferred/let-flow
       (->> bindings
            (partition 2)
            (mapcat (fn [[k v]] [k `(manifold.deferred/future ~v)]))

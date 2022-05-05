@@ -4,8 +4,7 @@
    [robertluo.fun-map
     [core :as core]
     [wrapper :as wrapper]
-    [helper :as helper]
-    [util :as util]]))
+    [helper :as helper]]))
 
 (defn fun-map
   "Returns a new fun-map.
