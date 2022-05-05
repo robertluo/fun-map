@@ -8,7 +8,7 @@
 (defn ci
   [opts]
   (-> opts
-      (assoc :lib lib :version version)
+      (assoc :lib lib :version version :aliases [:dev])
       (cb/clean)
       (cb/run-tests)
       (cb/jar)))
