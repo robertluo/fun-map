@@ -30,8 +30,8 @@
   clojure.lang.ITransientAssociative2
   (containsKey [_ k]
     (.containsKey tm k))
-  (entryAt [_ k]
-    (fn-entry tm (.entryAt tm k))))
+  (entryAt [this k]
+    (fn-entry this (.entryAt tm k))))
 
 ;; DelegatedMap takes a map `m` and delegates most feature to it.
 ;; The magic happens on function `fn-entry`, which takes the delegated map
@@ -77,18 +77,18 @@
     (.equals this other))
   (containsKey [_ k]
     (.containsKey m k))
-  (entryAt [_ k]
+  (entryAt [this k]
     (when (.containsKey m k)
-      (fn-entry m (.entryAt m k))))
+      (fn-entry this (.entryAt m k))))
   (seq [this]
     (clojure.lang.IteratorSeq/create (.iterator this)))
-  (iterator [_]
+  (iterator [this]
     (let [ite (.iterator m)]
       (reify java.util.Iterator
         (hasNext [_]
           (.hasNext ite))
         (next [_]
-          (fn-entry m (.next ite))))))
+          (fn-entry this (.next ite))))))
   (assoc [_ k v]
     (DelegatedMap. (.assoc m k v) fn-entry))
   (assocEx [_ k v]
