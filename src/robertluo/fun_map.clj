@@ -1,10 +1,10 @@
 (ns robertluo.fun-map
   "fun-map Api"
-  (:require
-   [robertluo.fun-map
-    [core :as core]
-    [wrapper :as wrapper]
-    [helper :as helper]]))
+  (:require [robertluo.fun-map
+             [core :as core]
+             [wrapper :as wrapper]
+             [helper :as helper]
+             [util :as util]]))
 
 (defn fun-map
   "Returns a new fun-map.
@@ -75,13 +75,20 @@
 
 (defmethod helper/fw-impl :trace
   [{:keys [f options]}]
-  `(wrapper/cache-wrapper ~f ~(:trace options)))
+  `(wrapper/trace-wrapper ~f ~(:trace options)))
 
 (defmethod helper/fw-impl :cache
   [{:keys [f options arg-map]}]
   (let [focus (when-let [focus (:focus options)]
                 `(fn [~arg-map] ~focus))]
     `(wrapper/cache-wrapper ~f ~focus)))
+
+(util/when-require '[clojure.spec.alpha :as s]
+ (defmethod helper/fw-impl :spec
+   [{:keys [f options]}]
+   (println "installed")
+   (when-let [spec (:spec options)]
+     `(wrapper/spec-wrapper ~f ~spec))))
 
 (defmacro fnk
   "A shortcut for `fw` macro. Returns a simple FunctionWrapper which depends on

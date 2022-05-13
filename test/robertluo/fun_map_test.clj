@@ -129,9 +129,9 @@
 
 (deftest spec-wrapper-test
   (let [m (fun-map {:a/a 5
-                    :b (fw {:a/keys [a] :spec number?} (inc a))
-                    :c (fw {:keys [b] :spec number?} (str b))})]
-    (is (= 6 (:b m)))
+                    :b (fw {:a/keys [a] :spec number?} (str a))
+                    :c (fw {:keys [b] :spec number?} (inc b))})]
+    (is (= "5" (:b m)))
     (is (thrown? clojure.lang.ExceptionInfo (:c m)))))
 
 (deftest parallel-execution-test
