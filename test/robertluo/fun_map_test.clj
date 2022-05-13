@@ -1,8 +1,10 @@
 (ns robertluo.fun-map-test
   (:require [clojure.test :refer [deftest testing is]]
-            [robertluo.fun-map :refer [fnk fun-map closeable life-cycle-map touch halt! fw lookup]]))
+            [robertluo.fun-map :refer [fun-map? fnk fun-map closeable life-cycle-map touch halt! fw lookup]]))
 
 (deftest fun-map-test
+  (testing "predict funmap"
+    (is (= true (fun-map? (fun-map {})))))
   (testing "computed attribute of other attributes"
     (is (= 10 (:c (fun-map {:a/a 3 :b 7 :c (fnk [:a/a b] (+ a b))}))))
     (is (= 1000 (:c (fun-map {:a 10 :b (fnk [a] (* a a)) :c (fnk [b] (* 10 b))})))))

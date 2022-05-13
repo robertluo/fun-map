@@ -18,9 +18,6 @@
      [`let bindings])
    [`let bindings]))
 
-(comment
-  (let-form {} '[a :a]))
-
 (defn destruct-map
   "destruct arg-map of fw macro into different groups"
   [arg-map]
@@ -72,6 +69,7 @@
   "Default wrappers for fw macro"
   [:trace :cache])
 
+;; Global options
 (defn make-fw-wrapper
   "construct fw"
   [fun-wrapper arg-map body]

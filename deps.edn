@@ -3,7 +3,8 @@
  {:dev ;for development
   {:extra-paths ["test"]
    :extra-deps
-   {manifold/manifold {:mvn/version "0.2.3"}
+   {org.clojure/spec.alpha {:mvn/version "0.3.218"}
+    manifold/manifold {:mvn/version "0.2.3"}
     lambdaisland/kaocha {:mvn/version "1.66.1034"}}}
   :test ;run tests under console. e.g. clj -M:dev:test
   {:main-opts ["-m" "kaocha.runner"]}

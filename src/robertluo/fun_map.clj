@@ -73,11 +73,15 @@
   [arg-map & body]
   (helper/make-fw-wrapper wrapper/fun-wrapper arg-map body))
 
-(comment
-  (macroexpand-1
-   '(fw {:keys [a] :focus a} (inc a)))
-  #_{:clj-kondo/ignore [:unresolved-symbol]}
-  (fw {:keys [a] :focus a} (inc a)))
+(defmethod helper/fw-impl :trace
+  [{:keys [f options]}]
+  `(wrapper/cache-wrapper ~f ~(:trace options)))
+
+(defmethod helper/fw-impl :cache
+  [{:keys [f options arg-map]}]
+  (let [focus (when-let [focus (:focus options)]
+                `(fn [~arg-map] ~focus))]
+    `(wrapper/cache-wrapper ~f ~focus)))
 
 (defmacro fnk
   "A shortcut for `fw` macro. Returns a simple FunctionWrapper which depends on

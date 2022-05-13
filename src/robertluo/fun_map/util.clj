@@ -9,3 +9,8 @@
      ~if-body
      (catch Exception _#
        ~else-body)))
+
+(defmacro when-require
+  {:style/indent 1}
+  [rqr-clause & body]
+  `(opt-require ~rqr-clause (do ~@body) nil))

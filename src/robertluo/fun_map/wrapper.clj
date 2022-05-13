@@ -1,5 +1,7 @@
 (ns robertluo.fun-map.wrapper
-  "Protocols that sharing with other namespaces")
+  "Protocols that sharing with other namespaces"
+  (:require [robertluo.fun-map.util :as util]
+            [clojure.spec.alpha :as s]))
 
 (defprotocol ValueWrapper
   "A wrapper for a value."
@@ -64,3 +66,31 @@
 (defn trace-wrapper
   [wrapped trace]
   (TracedWrapper. wrapped trace))
+
+;; Fine print the wrappers
+(defmethod print-method FunctionWrapper [^FunctionWrapper o ^java.io.Writer wtr]
+  (.write wtr (str "<<" (.f o) ">>")))
+
+(defmethod print-method CachedWrapper [^CachedWrapper o ^java.io.Writer wtr]
+  (.write wtr
+          (str "<<"
+               (let [v (-> (.a_val_pair o) deref first)]
+                 (if (= ::unrealized v) "unrealized" v))
+               ">>")))
+
+;;;;;;;;;;;; Spec your FunctionWrapper
+
+#_{:clj-kondo/ignore [:unresolved-symbol]}
+(deftype SpecCheckingWrapper [wrapped spec]
+  ValueWrapper
+  (-wrapped? [_] true)
+  (-unwrap [_ m k]
+    (let [v (-unwrap wrapped m k)]
+      (if (s/valid? spec v)
+        v
+        (throw (ex-info "Value unwrapped does not conform spec"
+                        {:key k :value v :explain (s/explain-data spec v)}))))))
+
+(defn spec-wrapper
+  [wrapped spec]
+  (SpecCheckingWrapper. wrapped spec))
