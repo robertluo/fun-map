@@ -127,13 +127,6 @@
       (is (= 1 (:a m)))
       (is (= 2 (:a m))))))
 
-(deftest spec-wrapper-test
-  (let [m (fun-map {:a/a 5
-                    :b (fw {:a/keys [a] :spec number?} (str a))
-                    :c (fw {:keys [b] :spec number?} (inc b))})]
-    (is (= "5" (:b m)))
-    (is (thrown? clojure.lang.ExceptionInfo (:c m)))))
-
 (deftest parallel-execution-test
   (let [a (atom 5)
         m (fun-map {:a (delay (Thread/sleep 200) @a)

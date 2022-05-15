@@ -59,7 +59,7 @@
   (-wrapped? [_] true)
   (-unwrap [_ m k]
     (let [v (-unwrap wrapped m k)]
-      (when-let [trace-fn (or trace-fn (some-> m meta ::trace))]
+      (when-let [trace-fn (or trace-fn (some-> m meta :robertluo.fun-map/trace))]
         (trace-fn k v))
       v)))
 
@@ -77,21 +77,3 @@
                (let [v (-> (.a_val_pair o) deref first)]
                  (if (= ::unrealized v) "unrealized" v))
                ">>")))
-
-;;;;;;;;;;;; Spec your FunctionWrapper
-
-(util/when-require '[clojure.spec.alpha :as s]
-                   (deftype SpecCheckingWrapper [wrapped spec]
-                     ValueWrapper
-                     (-wrapped? [_] true)
-                     (-unwrap [_ m k]
-                       (let [v (-unwrap wrapped m k)]
-                         (println "unwrapped")
-                         (if (s/valid? spec v)
-                           v
-                           (throw (ex-info "Value unwrapped does not conform spec"
-                                           {:key k :value v :explain (s/explain-data spec v)}))))))
-
-                   (defn spec-wrapper
-                       [wrapped spec]
-                       (SpecCheckingWrapper. wrapped spec)))

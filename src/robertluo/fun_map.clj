@@ -31,7 +31,7 @@
   [m & {:keys [trace-fn]}]
   (with-meta
     (core/delegate-map m wrapper/wrapper-entry)
-    {::core/trace trace-fn}))
+    {::trace trace-fn}))
 
 (defn fun-map?
   "If m is a fun-map"
@@ -54,7 +54,6 @@
 
     - `[]` for naive one, no cache, no trace.
     - default to specable cached traceable implementation. which supports special keys:
-      - `:spec` a spec that the value must conform.
       - `:focus` A form that will be called to check if the function itself need
         to be called. It must be pure functional and very effecient.
       - `:trace` A trace function, if the value updated, it will be called with key
@@ -82,13 +81,6 @@
   (let [focus (when-let [focus (:focus options)]
                 `(fn [~arg-map] ~focus))]
     `(wrapper/cache-wrapper ~f ~focus)))
-
-(util/when-require '[clojure.spec.alpha :as s]
- (defmethod helper/fw-impl :spec
-   [{:keys [f options]}]
-   (println "installed")
-   (when-let [spec (:spec options)]
-     `(wrapper/spec-wrapper ~f ~spec))))
 
 (defmacro fnk
   "A shortcut for `fw` macro. Returns a simple FunctionWrapper which depends on
