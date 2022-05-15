@@ -1,10 +1,11 @@
 (ns ^:no-doc robertluo.fun-map.core
-  "implementation of fun-maps"
+  "Where the fun starts."
   (:import [clojure.lang
             IMapEntry
             IPersistentMap
             ITransientMap]))
 
+;;Marker iterface for a funmap
 (definterface IFunMap
   (rawSeq []))
 

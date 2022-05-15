@@ -3,8 +3,7 @@
   (:require [robertluo.fun-map
              [core :as core]
              [wrapper :as wrapper]
-             [helper :as helper]
-             [util :as util]]))
+             [helper :as helper]]))
 
 (defn fun-map
   "Returns a new fun-map.
@@ -22,7 +21,7 @@
 
   Options:
 
-   - :trace-fn An Effectful function for globally FunctionWrapper calling trace which
+   - ::trace-fn An Effectful function for globally FunctionWrapper calling trace which
      accept key and value as its argument.
 
   Example:
@@ -37,6 +36,13 @@
   "If m is a fun-map"
   [m]
   (core/fun-map? m))
+
+;;Automatically unwrap IDeref
+(extend-protocol wrapper/ValueWrapper
+  clojure.lang.IDeref
+  (-wrapped? [_] true)
+  (-unwrap [d _ _]
+    (deref d)))
 
 (comment
   (fun-map {:a 1 :b 5 :c (wrapper/fun-wrapper (fn [m _] (let [a (get m :a) b (get m :b)] (+ a b))))})

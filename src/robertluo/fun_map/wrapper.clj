@@ -1,7 +1,5 @@
 (ns robertluo.fun-map.wrapper
-  "Protocols that sharing with other namespaces"
-  (:require [robertluo.fun-map.util :as util]
-            [clojure.spec.alpha :as s]))
+  "Protocols that sharing with other namespaces")
 
 (defprotocol ValueWrapper
   "A wrapper for a value."
@@ -10,6 +8,7 @@
   (-unwrap [this m k]
     "unwrap the real value from a wrapper on the key of k"))
 
+;; Make sure common value is not wrapped
 (extend-protocol ValueWrapper
   Object
   (-wrapped? [_] false)
@@ -18,11 +17,7 @@
   nil
   (-wrapped? [_] false)
   (-unwrap [_ _ k]
-    (ex-info "Unwrap a nil" {:key k}))
-  clojure.lang.IDeref
-  (-wrapped? [_] true)
-  (-unwrap [d _ _]
-    (deref d)))
+    (ex-info "Unwrap a nil" {:key k})))
 
 (deftype FunctionWrapper [f]
   ValueWrapper
