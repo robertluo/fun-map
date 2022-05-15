@@ -76,7 +76,7 @@
       (+ a b))"
   {:style/indent 1}
   [arg-map & body]
-  (helper/make-fw-wrapper wrapper/fun-wrapper arg-map body))
+  (helper/make-fw-wrapper wrapper/fun-wrapper [:trace :cache] arg-map body))
 
 (defmethod helper/fw-impl :trace
   [{:keys [f options]}]

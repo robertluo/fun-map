@@ -25,9 +25,13 @@
   (-unwrap [_ m k]
     (f m k)))
 
-(def fun-wrapper ->FunctionWrapper)
+(def fun-wrapper
+  "construct a new FunctionWrapper"
+  ->FunctionWrapper)
 
 (defn wrapper-entry
+  "returns a k,v pair from map `m` and input k-v pair.
+   If `v` is a wrapped, then recursive unwrap it."
   [m [k v]]
   (if (-wrapped? v)
     (recur m [k (-unwrap v m k)])
@@ -46,6 +50,7 @@
         val))))
 
 (defn cache-wrapper
+  "construct a CachedWrapper"
   [wrapped focus]
   (CachedWrapper. wrapped (atom [::unrealized ::unrealized]) focus))
 
@@ -58,9 +63,9 @@
         (trace-fn k v))
       v)))
 
-(defn trace-wrapper
-  [wrapped trace]
-  (TracedWrapper. wrapped trace))
+(def trace-wrapper
+  "constructs a TraceWrapper"
+  ->TracedWrapper)
 
 ;; Fine print the wrappers
 (defmethod print-method FunctionWrapper [^FunctionWrapper o ^java.io.Writer wtr]

@@ -65,14 +65,10 @@
 (defmethod fw-impl :default
   [{f :f}] f)
 
-(def default-wrappers
-  "Default wrappers for fw macro"
-  [:trace :cache])
-
 ;; Global options
 (defn make-fw-wrapper
   "construct fw"
-  [fun-wrapper arg-map body]
+  [fun-wrapper default-wrappers arg-map body]
   (let [{:keys [naming normal fm]} (destruct-map arg-map)
         arg-map (merge naming normal)
         m-sym (gensym "fmk")
@@ -83,8 +79,4 @@
             `(~fun-wrapper ~f)
             (or (:wrappers fm) default-wrappers))))
 
-
-(comment
-  (make-fw-wrapper identity '{:keys [a b]} '(+ a b))
-  )
 
