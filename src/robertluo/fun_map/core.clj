@@ -121,10 +121,11 @@
     (TransientDelegatedMap. (transient m) fn-entry)))
 
 (defn- fn-entry-adapter
+  "turns function `fn-entry` to entry in/out function"
   [fn-entry]
   (fn [m ^IMapEntry entry]
-    (when-let [[k v] (fn-entry m [(.key entry) (.val entry)])]
-      (clojure.lang.MapEntry. k v))))
+    (when-let [[k v] (fn-entry m entry)]
+      (clojure.lang.MapEntry/create k v))))
 
 (defn delegate-map
   "Return a delegated map"
