@@ -1,8 +1,10 @@
 (ns robertluo.fun-map-test
-  (:require [clojure.test :refer :all]
-            [robertluo.fun-map :refer :all]))
+  (:require [clojure.test :refer [deftest testing is]]
+            [robertluo.fun-map :refer [fun-map? fnk fun-map closeable life-cycle-map touch halt! fw lookup]]))
 
 (deftest fun-map-test
+  (testing "predict funmap"
+    (is (= true (fun-map? (fun-map {})))))
   (testing "computed attribute of other attributes"
     (is (= 10 (:c (fun-map {:a/a 3 :b 7 :c (fnk [:a/a b] (+ a b))}))))
     (is (= 1000 (:c (fun-map {:a 10 :b (fnk [a] (* a a)) :c (fnk [b] (* 10 b))})))))
@@ -124,13 +126,6 @@
           m (fun-map {:a (fw {:wrappers []} (swap! a inc))})]
       (is (= 1 (:a m)))
       (is (= 2 (:a m))))))
-
-(deftest spec-wrapper-test
-  (let [m (fun-map {:a/a 5
-                    :b (fw {:a/keys [a] :spec number?} (inc a))
-                    :c (fw {:keys [b] :spec number?} (str b))})]
-    (is (= 6 (:b m)))
-    (is (thrown? clojure.lang.ExceptionInfo (:c m)))))
 
 (deftest parallel-execution-test
   (let [a (atom 5)

@@ -1,25 +1,16 @@
 (ns robertluo.fun-map.core-test
   (:require
    [robertluo.fun-map.core :as sut]
-   [clojure.test :refer [deftest is]]))
+   [clojure.test :refer [deftest is testing]]))
 
-(deftest destruct-map-test
-  (is (= '{:naming {a :a b :b c :c e :d/e f :d/f}
-           :normal {:as this :or {a 3}}
-           :fm     {:focus [a b]}}
-         (sut/destruct-map '{:keys  [a b :d/f] c :c :d/keys [e] :as this
-                             :or {a 3}
-                             :focus [a b]}))))
+(deftest delegate-map
+  (testing "delegate-map with entry simple pass is a normal map"
+    (let [m (sut/delegate-map {:a 1 :b 2} (fn [_ [k v]] [k (* 2 v)]))]
+      (is (= {:a 2 :b 4} m)))))
 
 (deftest transient-test
-  (letfn [(wrap-m [m f] (-> m sut/delegate-map transient f persistent!))]
+  (letfn [(wrap-m [m f] (-> m (sut/delegate-map (fn [_ [k v]] [k (* 2 v)])) transient f persistent!))]
     (is (= {} (wrap-m {} identity)))
-    (is (= {:a 1} (wrap-m {} #(assoc! % :a 1))))
-    (is (= {:a 1} (wrap-m {} #(conj! % [:a 1]))))
-    (is (= 2 (-> (sut/delegate-map {:a (delay 2)}) transient (.valAt :a))))
-    (is (= 2 (-> (sut/delegate-map {:a 1 :b 2}) count)))
-    (is (= {:a 1} (wrap-m {:a 1 :b 2} #(dissoc! % :b))))
-    (is (= true (-> (sut/delegate-map {:a 1}) transient (.containsKey :a))))
-    (let [tm (-> (sut/delegate-map {:a (delay 1)}) transient)]
-      (is (= [:a 1] (-> (.entryAt tm :a) seq)))
-      (persistent! tm))))
+    (is (= {:a 2} (wrap-m {} #(assoc! % :a 1))))
+    (is (= {:a 2} (wrap-m {} #(conj! % [:a 1]))))
+    (is (= {:b 4} (wrap-m {} #(-> % (conj! [:a 1]) (conj! [:b 2]) (dissoc! :a)))))))

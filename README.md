@@ -145,17 +145,7 @@ This will create a non-decorated plain function wrapper.
   (inc a))
 ```
 
-Without specify `:wrappers`, the created wrapper will have default decorators `[:spec :trace :cache]`.
-
-#### `:spec` decorator (only available with `clojure.spec.alpha` in your class path, a.k.a clojure >= 1.9)
-
-You can specify the spec of the returned value, and the decorator will check if the actual result conform it.
-
-```clojure
-(def m (fun-map {:a 12 :b (fw {:keys [a] :spec string?} (inc a))}))
-
-(:b m) ;=> will throw an exception
-```
+Without specify `:wrappers`, the created wrapper will have default decorators `[:trace :cache]`.
 
 #### `:cache` decorator
 

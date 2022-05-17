@@ -1,9 +1,9 @@
 (ns robertluo.fun-map
   "fun-map Api"
-  (:require
-   [robertluo.fun-map.core :as impl]
-   [robertluo.fun-map.util :as util]
-   [clojure.spec.alpha :as s]))
+  (:require [robertluo.fun-map
+             [core :as core]
+             [wrapper :as wrapper]
+             [helper :as helper]]))
 
 (defn fun-map
   "Returns a new fun-map.
@@ -21,7 +21,7 @@
 
   Options:
 
-   - :trace-fn An Effectful function for globally FunctionWrapper calling trace which
+   - ::trace-fn An Effectful function for globally FunctionWrapper calling trace which
      accept key and value as its argument.
 
   Example:
@@ -29,20 +29,24 @@
     (fun-map {:a 35 :b (delay (println \"hello from b!\"))}"
   [m & {:keys [trace-fn]}]
   (with-meta
-    (impl/delegate-map m)
-    {::impl/trace trace-fn}))
+    (core/delegate-map m wrapper/wrapper-entry)
+    {::trace trace-fn}))
 
-(defn touch
-  "Forcefully evaluate all entries of a map and returns itself."
+(defn fun-map?
+  "If m is a fun-map"
   [m]
-  (doseq [[_ _] m] nil)
-  m)
+  (core/fun-map? m))
 
-(defn lookup
-  "Returns a semi Associative instance by mapping single arity function f as
-  argument to return value."
-  [f]
-  (impl/lookup f))
+;;Automatically unwrap IDeref
+(extend-protocol wrapper/ValueWrapper
+  clojure.lang.IDeref
+  (-wrapped? [_] true)
+  (-unwrap [d _ _]
+    (deref d)))
+
+(comment
+  (fun-map {:a 1 :b 5 :c (wrapper/fun-wrapper (fn [m _] (let [a (get m :a) b (get m :b)] (+ a b))))})
+  )
 
 (defmacro fw
   "Returns a FunctionWrapper of an anonymous function defined by body.
@@ -56,7 +60,6 @@
 
     - `[]` for naive one, no cache, no trace.
     - default to specable cached traceable implementation. which supports special keys:
-      - `:spec` a spec that the value must conform.
       - `:focus` A form that will be called to check if the function itself need
         to be called. It must be pure functional and very effecient.
       - `:trace` A trace function, if the value updated, it will be called with key
@@ -73,10 +76,17 @@
       (+ a b))"
   {:style/indent 1}
   [arg-map & body]
-  (impl/make-fw-wrapper arg-map body))
+  (helper/make-fw-wrapper wrapper/fun-wrapper [:trace :cache] arg-map body))
 
-(comment
-  (fw {:keys [a] :focus a} (inc a)))
+(defmethod helper/fw-impl :trace
+  [{:keys [f options]}]
+  `(wrapper/trace-wrapper ~f ~(:trace options)))
+
+(defmethod helper/fw-impl :cache
+  [{:keys [f options arg-map]}]
+  (let [focus (when-let [focus (:focus options)]
+                `(fn [~arg-map] ~focus))]
+    `(wrapper/cache-wrapper ~f ~focus)))
 
 (defmacro fnk
   "A shortcut for `fw` macro. Returns a simple FunctionWrapper which depends on
@@ -88,6 +98,12 @@
        ~@body))
 
 ;;;;;; life cycle map
+
+(defn touch
+  "Forcefully evaluate all entries of a map and returns itself."
+  [m]
+  (doseq [[_ _] m] nil)
+  m)
 
 (defprotocol Haltable
   "Life cycle protocol, signature just like java.io.Closeable,
@@ -117,7 +133,17 @@
         halt-fn (fn [_]
                   (doseq [component (reverse @components)]
                     (halt! component)))]
-    (vary-meta sys assoc ::impl/close-fn halt-fn)))
+    (vary-meta sys assoc ::core/close-fn halt-fn)))
+
+;;;;;;;;;;; Utilities
+
+(deftype CloseableValue [value close-fn]
+  clojure.lang.IDeref
+  (deref [_]
+    value)
+  java.io.Closeable
+  (close [_]
+    (close-fn)))
 
 (defn closeable
   "Returns a wrapped plain value, which implements IDref and Closeable,
@@ -126,21 +152,15 @@
    When used inside a life cycle map, its close-fn when get called when
    closing the map."
   [r close-fn]
-  (impl/->CloseableValue r close-fn))
+  (->CloseableValue r close-fn))
 
-(defn fun-map?
-  "If m is a fun-map"
-  [m]
-  (impl/fun-map? m))
-
-(util/opt-require [clojure.spec.alpha :as s]
-  (s/def ::trace-fn fn?)
-  (s/fdef fun-map
-    :args (s/cat :map map? :trace (s/keys* :opt-un [::trace-fn]))
-    :ret fun-map?)
-
-  (s/fdef fw
-    :args (s/cat :arg-map map? :body (s/* any?)))
-
-  (s/fdef fnk
-    :args (s/cat :args vector? :body (s/* any?))))
+(defn lookup
+  "Returns a ILookup object for calling f on k"
+  [f]
+  (reify clojure.lang.Associative
+    (entryAt [this k]
+      (clojure.lang.MapEntry. k (.valAt this k)))
+    (valAt [_ k]
+      (f k))
+    (valAt [this k not-found]
+      (or (.valAt this k) not-found))))
