@@ -3,16 +3,16 @@
  {:dev ;for development
   {:extra-paths ["test"]
    :extra-deps
-   {manifold/manifold {:mvn/version "0.2.3"}
-    lambdaisland/kaocha {:mvn/version "1.66.1034"}}}
+   {manifold/manifold {:mvn/version "0.2.4"}
+    lambdaisland/kaocha {:mvn/version "1.71.1119"}}}
   :test ;run tests under console. e.g. clj -M:dev:test
   {:main-opts ["-m" "kaocha.runner"]}
   :build ;customized building process running. e.g. clj -T:build ci
   {:deps {io.github.seancorfield/build-clj
-          {:git/tag "v0.8.0" :git/sha "9bd8b8a"}}
+          {:git/tag "v0.8.3" :git/sha "7ac1f8d"}}
    :ns-default build}
   :eastwood ;run eastwood linter
   {:extra-deps
-   {jonase/eastwood {:mvn/version "1.2.3"}}
+   {jonase/eastwood {:mvn/version "1.3.0"}}
    :main-opts
    ["-m" "eastwood.lint" {:source-paths ["src"]}]}}}
