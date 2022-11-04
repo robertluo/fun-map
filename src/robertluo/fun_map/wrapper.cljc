@@ -9,15 +9,20 @@
     "unwrap the real value from a wrapper on the key of k"))
 
 ;; Make sure common value is not wrapped
-(extend-protocol ValueWrapper
-  Object
-  (-wrapped? [_] false)
-  (-unwrap [this _ k]
-    (ex-info "Unwrap a common value" {:key k :value this}))
-  nil
-  (-wrapped? [_] false)
-  (-unwrap [_ _ k]
-    (ex-info "Unwrap a nil" {:key k})))
+#?(:clj
+   (extend-protocol ValueWrapper
+     Object
+     (-wrapped? [_] false)
+     (-unwrap [this _ k]
+       (ex-info "Unwrap a common value" {:key k :value this}))
+     nil
+     (-wrapped? [_] false)
+     (-unwrap [_ _ k]
+       (ex-info "Unwrap a nil" {:key k}))
+     clojure.lang.IDeref
+     (-wrapped? [_] true)
+     (-unwrap [d _ _]
+       (deref d))))
 
 (deftype FunctionWrapper [f]
   ValueWrapper
@@ -33,9 +38,15 @@
   "returns a k,v pair from map `m` and input k-v pair.
    If `v` is a wrapped, then recursive unwrap it."
   [m [k v]]
-  (if (-wrapped? v)
-    (recur m [k (-unwrap v m k)])
-    [k v]))
+  #?(:clj
+     (if (-wrapped? v)
+       (recur m [k (-unwrap v m k)])
+       [k v])
+     :cljs
+     (cond
+       (satisfies? ValueWrapper v) (recur m [k (-unwrap v m k)])
+       (satisfies? IDeref v) (recur m [k (deref v)])
+       :else [k v])))
 
 ;;;;;;;;;;; High order wrappers
 
@@ -68,12 +79,14 @@
   ->TracedWrapper)
 
 ;; Fine print the wrappers
-(defmethod print-method FunctionWrapper [^FunctionWrapper o ^java.io.Writer wtr]
-  (.write wtr (str "<<" (.f o) ">>")))
+#?(:clj
+   (do
+     (defmethod print-method FunctionWrapper [^FunctionWrapper o ^java.io.Writer wtr]
+       (.write wtr (str "<<" (.f o) ">>")))
 
-(defmethod print-method CachedWrapper [^CachedWrapper o ^java.io.Writer wtr]
-  (.write wtr
-          (str "<<"
-               (let [v (-> (.a_val_pair o) deref first)]
-                 (if (= ::unrealized v) "unrealized" v))
-               ">>")))
+     (defmethod print-method CachedWrapper [^CachedWrapper o ^java.io.Writer wtr]
+       (.write wtr
+               (str "<<"
+                    (let [v (-> (.a_val_pair o) deref first)]
+                      (if (= ::unrealized v) "unrealized" v))
+                    ">>")))))

@@ -37,13 +37,6 @@
   [m]
   (core/fun-map? m))
 
-;;Automatically unwrap IDeref
-(extend-protocol wrapper/ValueWrapper
-  clojure.lang.IDeref
-  (-wrapped? [_] true)
-  (-unwrap [d _ _]
-    (deref d)))
-
 (comment
   (fun-map {:a 1 :b 5 :c (wrapper/fun-wrapper (fn [m _] (let [a (get m :a) b (get m :b)] (+ a b))))})
   )
