@@ -1,7 +1,8 @@
 {:paths   ["src"]
  :aliases {:dev      ;for development
            {:extra-paths ["test"]
-            :extra-deps  {manifold/manifold   {:mvn/version "0.2.4"}}}
+            :extra-deps  {manifold/manifold   {:mvn/version "0.2.4"}
+                          org.clojure/clojurescript {:mvn/version "1.11.60"}}}
            :test     ;run tests under console. e.g. clj -M:dev:test
            {:extra-deps {lambdaisland/kaocha {:mvn/version "1.71.1119"}}
             :main-opts  ["-m" "kaocha.runner"]}
