@@ -68,10 +68,6 @@
      IFunMap
      (rawSeq [_]
        (.seq m))
-     java.io.Closeable
-     (close [this]
-       (when-let [close-fn (some-> (.meta this) ::close-fn)]
-         (close-fn this)))
      clojure.lang.MapEquivalence
      clojure.lang.IHashEq
      (hasheq [_]
@@ -273,3 +269,15 @@
 
      (prefer-method print-method IFunMap clojure.lang.IPersistentMap)
      (prefer-method print-method IFunMap java.util.Map)))
+
+(defprotocol Haltable
+  "Life cycle protocol, signature just like java.io.Closeable,
+  being a protocol gives user ability to extend"
+  (-halt! [this]))
+
+(extend-protocol Haltable
+  DelegatedMap
+  (-halt!
+    [this]
+    (when-let [close-fn (some-> (#?(:clj .meta :cljs -meta) this) ::close-fn)]
+      (close-fn this))))

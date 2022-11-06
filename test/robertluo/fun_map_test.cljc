@@ -2,11 +2,11 @@
   (:require
    [clojure.test :refer [deftest testing is]]
    #?(:clj
-      [robertluo.fun-map :refer [fun-map? fnk fun-map closeable life-cycle-map touch halt! fw lookup]]
+      [robertluo.fun-map :refer [fun-map? fnk fun-map closeable life-cycle-map touch halt! fw lookup halt!]]
       :cljs
       [robertluo.fun-map 
        :as fm
-       :refer [fun-map? fun-map]
+       :refer [fun-map? fun-map touch life-cycle-map closeable halt!]
        :refer-macros [fw fnk]])))
 
 (deftest fun-map-test
@@ -69,28 +69,26 @@
     (is (= "ok"
            ((-> (fun-map {:a (fn [] "ok")}) :a))))))
 
-#?(:clj
-   (deftest life-cycle-map-test
-     (testing "a life cycle map will halt! its components in order"
-       (let [close-order (atom [])
-             component   (fn [k]
-                           (closeable nil
-                                      (fn [] (swap! close-order conj k))))
-             sys         (life-cycle-map
-                          {:a (fnk [] (component :a)) :b (fnk [a] (component :b))})]
-         (:b sys)
-         (.close sys)
-         (is (= [:b :a] @close-order))))))
+(deftest life-cycle-map-test
+  (testing "a life cycle map will halt! its components in order"
+    (let [close-order (atom [])
+          component   (fn [k]
+                        (closeable nil
+                                   (fn [] (swap! close-order conj k))))
+          sys         (life-cycle-map
+                       {:a (fnk [] (component :a)) :b (fnk [a] (component :b))})]
+      (:b sys)
+      (halt! sys)
+      (is (= [:b :a] @close-order)))))
 
-#?(:clj
-   (deftest touch-test
-     (testing "touching a fun-map will call all functions inside"
-       (let [far (atom 0)
-             m   (-> (array-map :a (fnk [] (swap! far inc)) :b (fnk [] (swap! far inc)))
-                     fun-map
-                     touch)]
-         (is (= 2 @far))
-         (is (= {:a 1 :b 2} m))))))
+(deftest touch-test
+  (testing "touching a fun-map will call all functions inside"
+    (let [far (atom 0)
+          m   (-> (array-map :a (fnk [] (swap! far inc)) :b (fnk [] (swap! far inc)))
+                  fun-map
+                  touch)]
+      (is (= 2 @far))
+      (is (= {:a 1 :b 2} m)))))
 
 (deftest merge-trace-test
   (testing "trace-fn should ok for merging"
@@ -102,35 +100,33 @@
       (is (= {:a 0 :b 1} a))
       (is (= {:a 0 :b 1} @marker)))))
 
-#?(:clj
-   (deftest closeable-test
-     (testing "put a closeable value into life cycle map will get closed"
-       (let [marker (atom 0)
-             m      (touch (life-cycle-map
-                            {:a (fnk [] (closeable 3 #(swap! marker inc)))}))]
-         (is (= {:a 3} m))
-         (halt! m)
-         (is (= 1 @marker))))))
+(deftest closeable-test
+  (testing "put a closeable value into life cycle map will get closed"
+    (let [marker (atom 0)
+          m      (touch (life-cycle-map
+                         {:a (fnk [] (closeable 3 #(swap! marker inc)))}))]
+      (is (= {:a 3} m))
+      (halt! m)
+      (is (= 1 @marker)))))
 
 (deftest fw-test
   (testing "fw macro using normal destructure syntax to define wrapper"
     (is (= {:a 3 :b 5}
            (fun-map {:a (fw {} 3) :b (fw {:keys [a] :focus [a]} (+ a 2))})))))
 
-#?(:clj
-   (deftest fnk-focus-test
-     (testing "fnk automatically focus on its dependencies, re-run when dependencies change"
-       (let [input (atom 5)
-             a (fun-map {:a input :b (fnk [a] (* a 2))})]
-         (touch a)
-         (reset! input 7)
-         (is (= 14 (:b a)))))
-     (testing "if no focus function define, the function wrapper will just invoke once"
-       (let [input (atom [3 4])
-             a (fun-map {:a input :cnt (fw {:keys [a]} (count a))})]
-         (is (= 2 (:cnt a)))
-         (reset! input (range 10))
-         (is (= 2 (:cnt a)))))))
+(deftest fnk-focus-test
+  (testing "fnk automatically focus on its dependencies, re-run when dependencies change"
+    (let [input (atom 5)
+          a (fun-map {:a input :b (fnk [a] (* a 2))})]
+      (touch a)
+      (reset! input 7)
+      (is (= 14 (:b a)))))
+  (testing "if no focus function define, the function wrapper will just invoke once"
+    (let [input (atom [3 4])
+          a (fun-map {:a input :cnt (fw {:keys [a]} (count a))})]
+      (is (= 2 (:cnt a)))
+      (reset! input (range 10))
+      (is (= 2 (:cnt a))))))
 
 (deftest naive-fw-test
   (testing "choose empty wrappers, no value will be cached"

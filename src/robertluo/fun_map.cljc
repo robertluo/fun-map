@@ -1,9 +1,10 @@
 (ns robertluo.fun-map
   "fun-map Api"
-  (:require [robertluo.fun-map.core :as core]
-            [robertluo.fun-map.wrapper :as wrapper]
-            #?(:clj
-               [robertluo.fun-map.helper :as helper])))
+  (:require
+   [robertluo.fun-map.core :as core]
+   [robertluo.fun-map.wrapper :as wrapper]
+   #?(:clj
+      [robertluo.fun-map.helper :as helper])))
 
 (defn fun-map
   "Returns a new fun-map.
@@ -96,65 +97,59 @@
 
 ;;;;;; life cycle map
 
-#?(:clj
-   (defn touch
-     "Forcefully evaluate all entries of a map and returns itself."
-     [m]
-     (doseq [[_ _] m] nil)
-     m))
-
-(defprotocol Haltable
-  "Life cycle protocol, signature just like java.io.Closeable,
-  being a protocol gives user ability to extend"
-  (halt! [this]))
+(defn touch
+  "Forcefully evaluate all entries of a map and returns itself."
+  [m]
+  (doseq [[_ _] m] nil)
+  m)
 
 #?(:clj
 ;; make it compatible with java.io.Closeable
-   (extend-protocol Haltable
+   (extend-protocol core/Haltable
      java.io.Closeable
      (halt! [this]
        (.close this))))
 
-#?(:clj
-   (defn life-cycle-map
-     "returns a fun-map can be shutdown orderly.
+(defn life-cycle-map
+  "returns a fun-map can be shutdown orderly.
 
    Any FunctionWrapper supports `Closeable` in this map will be considered
    as a component, its `close` method will be called in reversed order of its
    creation when the map itself closing.
 
    Notice only accessed components will be shutdown."
-     [m]
-     (let [components (atom [])
-           trace-fn (fn [_ v]
-                      (when (satisfies? Haltable v)
-                        (swap! components conj v)))
-           sys        (fun-map m :trace-fn trace-fn)
-           halt-fn (fn [_]
-                     (doseq [component (reverse @components)]
-                       (halt! component)))]
-       (vary-meta sys assoc ::core/close-fn halt-fn))))
+  [m]
+  (let [components (atom [])
+        trace-fn (fn [_ v]
+                   (when (satisfies? core/Haltable v)
+                     (swap! components conj v)))
+        sys        (fun-map m :trace-fn trace-fn)
+        halt-fn (fn [_]
+                  (doseq [component (reverse @components)]
+                    (core/-halt! component)))]
+    (vary-meta sys assoc ::core/close-fn halt-fn)))
 
 ;;;;;;;;;;; Utilities
+(def halt!
+  "stop working on a resource"
+  core/-halt!)
 
-#?(:clj
-   (deftype CloseableValue [value close-fn]
-     clojure.lang.IDeref
-     (deref [_]
-       value)
-     java.io.Closeable
-     (close [_]
-       (close-fn))))
+(deftype CloseableValue [value close-fn]
+  #?(:clj clojure.lang.IDeref :cljs IDeref)
+  #?(:clj (deref [_] value)
+     :cljs (-deref [_] value))
+  core/Haltable
+  (core/-halt! [_]
+    (close-fn)))
 
-#?(:clj
-   (defn closeable
-     "Returns a wrapped plain value, which implements IDref and Closeable,
+(defn closeable
+  "Returns a wrapped plain value, which implements IDref and Closeable,
    the close-fn is an effectual function with no argument.
 
    When used inside a life cycle map, its close-fn when get called when
    closing the map."
-     [r close-fn]
-     (->CloseableValue r close-fn)))
+  [r close-fn]
+  (->CloseableValue r close-fn))
 
 #?(:clj
    (defn lookup
