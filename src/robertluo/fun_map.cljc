@@ -1,9 +1,9 @@
 (ns robertluo.fun-map
   "fun-map Api"
-  (:require [robertluo.fun-map
-             [core :as core]
-             [wrapper :as wrapper]
-             [helper :as helper]]))
+  (:require [robertluo.fun-map.core :as core]
+            [robertluo.fun-map.wrapper :as wrapper]
+            #?(:clj
+               [robertluo.fun-map.helper :as helper])))
 
 (defn fun-map
   "Returns a new fun-map.
@@ -41,8 +41,9 @@
   (fun-map {:a 1 :b 5 :c (wrapper/fun-wrapper (fn [m _] (let [a (get m :a) b (get m :b)] (+ a b))))})
   )
 
-(defmacro fw
-  "Returns a FunctionWrapper of an anonymous function defined by body.
+#?(:clj
+   (defmacro fw
+     "Returns a FunctionWrapper of an anonymous function defined by body.
 
    Since a FunctionWrapper's function will be called with the map itself as the
    argument, this macro using a map `arg-map` as its argument. It follows the
@@ -67,93 +68,102 @@
          :trace (fn [k v] (println k v))
          :focus (select-keys m [:a :b])}
       (+ a b))"
-  {:style/indent 1}
-  [arg-map & body]
-  (helper/make-fw-wrapper wrapper/fun-wrapper [:trace :cache] arg-map body))
+     {:style/indent 1}
+     [arg-map & body]
+     (helper/make-fw-wrapper `wrapper/fun-wrapper [:trace :cache] arg-map body)))
 
-(defmethod helper/fw-impl :trace
-  [{:keys [f options]}]
-  `(wrapper/trace-wrapper ~f ~(:trace options)))
+#?(:clj
+   (defmethod helper/fw-impl :trace
+     [{:keys [f options]}]
+     `(wrapper/trace-wrapper ~f ~(:trace options))))
 
-(defmethod helper/fw-impl :cache
-  [{:keys [f options arg-map]}]
-  (let [focus (when-let [focus (:focus options)]
-                `(fn [~arg-map] ~focus))]
-    `(wrapper/cache-wrapper ~f ~focus)))
+#?(:clj
+   (defmethod helper/fw-impl :cache
+     [{:keys [f options arg-map]}]
+     (let [focus (when-let [focus (:focus options)]
+                   `(fn [~arg-map] ~focus))]
+       `(wrapper/cache-wrapper ~f ~focus))))
 
-(defmacro fnk
-  "A shortcut for `fw` macro. Returns a simple FunctionWrapper which depends on
+#?(:clj
+   (defmacro fnk
+     "A shortcut for `fw` macro. Returns a simple FunctionWrapper which depends on
   `args` key of the fun-map, it will *focus* on the keys also."
-  {:style/indent 1}
-  [args & body]
-  `(fw {:keys  ~args
-        :focus ~args}
-       ~@body))
+     {:style/indent 1}
+     [args & body]
+     `(fw {:keys  ~args
+           :focus ~args}
+          ~@body)))
 
 ;;;;;; life cycle map
 
-(defn touch
-  "Forcefully evaluate all entries of a map and returns itself."
-  [m]
-  (doseq [[_ _] m] nil)
-  m)
+#?(:clj
+   (defn touch
+     "Forcefully evaluate all entries of a map and returns itself."
+     [m]
+     (doseq [[_ _] m] nil)
+     m))
 
 (defprotocol Haltable
   "Life cycle protocol, signature just like java.io.Closeable,
   being a protocol gives user ability to extend"
   (halt! [this]))
 
+#?(:clj
 ;; make it compatible with java.io.Closeable
-(extend-protocol Haltable
-  java.io.Closeable
-  (halt! [this]
-    (.close this)))
+   (extend-protocol Haltable
+     java.io.Closeable
+     (halt! [this]
+       (.close this))))
 
-(defn life-cycle-map
-  "returns a fun-map can be shutdown orderly.
+#?(:clj
+   (defn life-cycle-map
+     "returns a fun-map can be shutdown orderly.
 
    Any FunctionWrapper supports `Closeable` in this map will be considered
    as a component, its `close` method will be called in reversed order of its
    creation when the map itself closing.
 
    Notice only accessed components will be shutdown."
-  [m]
-  (let [components (atom [])
-        trace-fn (fn [_ v]
-                   (when (satisfies? Haltable v)
-                     (swap! components conj v)))
-        sys        (fun-map m :trace-fn trace-fn)
-        halt-fn (fn [_]
-                  (doseq [component (reverse @components)]
-                    (halt! component)))]
-    (vary-meta sys assoc ::core/close-fn halt-fn)))
+     [m]
+     (let [components (atom [])
+           trace-fn (fn [_ v]
+                      (when (satisfies? Haltable v)
+                        (swap! components conj v)))
+           sys        (fun-map m :trace-fn trace-fn)
+           halt-fn (fn [_]
+                     (doseq [component (reverse @components)]
+                       (halt! component)))]
+       (vary-meta sys assoc ::core/close-fn halt-fn))))
 
 ;;;;;;;;;;; Utilities
 
-(deftype CloseableValue [value close-fn]
-  clojure.lang.IDeref
-  (deref [_]
-    value)
-  java.io.Closeable
-  (close [_]
-    (close-fn)))
+#?(:clj
+   (deftype CloseableValue [value close-fn]
+     clojure.lang.IDeref
+     (deref [_]
+       value)
+     java.io.Closeable
+     (close [_]
+       (close-fn))))
 
-(defn closeable
-  "Returns a wrapped plain value, which implements IDref and Closeable,
+#?(:clj
+   (defn closeable
+     "Returns a wrapped plain value, which implements IDref and Closeable,
    the close-fn is an effectual function with no argument.
 
    When used inside a life cycle map, its close-fn when get called when
    closing the map."
-  [r close-fn]
-  (->CloseableValue r close-fn))
+     [r close-fn]
+     (->CloseableValue r close-fn)))
 
-(defn lookup
-  "Returns a ILookup object for calling f on k"
-  [f]
-  (reify clojure.lang.Associative
-    (entryAt [this k]
-      (clojure.lang.MapEntry. k (.valAt this k)))
-    (valAt [_ k]
-      (f k))
-    (valAt [this k not-found]
-      (or (.valAt this k) not-found))))
+#?(:clj
+   (defn lookup
+     "Returns a ILookup object for calling f on k"
+     [f]
+     (reify clojure.lang.Associative
+       (entryAt [this k]
+         (clojure.lang.MapEntry. k (.valAt this k)))
+       (valAt [_ k]
+         (f k))
+       (valAt [this k not-found]
+         (or (.valAt this k) not-found)))))

@@ -1,6 +1,13 @@
 (ns robertluo.fun-map-test
-  (:require [clojure.test :refer [deftest testing is]]
-            [robertluo.fun-map :refer [fun-map? fnk fun-map closeable life-cycle-map touch halt! fw lookup]]))
+  (:require
+   [clojure.test :refer [deftest testing is]]
+   #?(:clj
+      [robertluo.fun-map :refer [fun-map? fnk fun-map closeable life-cycle-map touch halt! fw lookup]]
+      :cljs
+      [robertluo.fun-map 
+       :as fm
+       :refer [fun-map? fun-map]
+       :refer-macros [fw fnk]])))
 
 (deftest fun-map-test
   (testing "predict funmap"
@@ -40,10 +47,11 @@
     (is (= 11
            (-> (fun-map {:a 2 :b (fnk [a] (inc a))}) (assoc :a 10) :b)))))
 
-(deftest dref-test
-  (testing "delay, future, delayed future value will be deref when accessed"
-    (is (= {:a 3 :b 4 :c 5}
-           (fun-map {:a (delay 3) :b (future 4) :c (delay (future 5))})))))
+#?(:clj
+   (deftest dref-test
+     (testing "delay, future, delayed future value will be deref when accessed"
+       (is (= {:a 3 :b 4 :c 5}
+              (fun-map {:a (delay 3) :b (future 4) :c (delay (future 5))}))))))
 
 (deftest trace-map-test
   (testing "invocation record"
@@ -61,26 +69,28 @@
     (is (= "ok"
            ((-> (fun-map {:a (fn [] "ok")}) :a))))))
 
-(deftest life-cycle-map-test
-  (testing "a life cycle map will halt! its components in order"
-    (let [close-order (atom [])
-          component   (fn [k]
-                        (closeable nil
-                          (fn [] (swap! close-order conj k))))
-          sys         (life-cycle-map
-                       {:a (fnk [] (component :a)) :b (fnk [a] (component :b))})]
-      (:b sys)
-      (.close sys)
-      (is (= [:b :a] @close-order)))))
+#?(:clj
+   (deftest life-cycle-map-test
+     (testing "a life cycle map will halt! its components in order"
+       (let [close-order (atom [])
+             component   (fn [k]
+                           (closeable nil
+                                      (fn [] (swap! close-order conj k))))
+             sys         (life-cycle-map
+                          {:a (fnk [] (component :a)) :b (fnk [a] (component :b))})]
+         (:b sys)
+         (.close sys)
+         (is (= [:b :a] @close-order))))))
 
-(deftest touch-test
-  (testing "touching a fun-map will call all functions inside"
-    (let [far (atom 0)
-          m   (-> (array-map :a (fnk [] (swap! far inc)) :b (fnk [] (swap! far inc)))
-                  fun-map
-                  touch)]
-      (is (= 2 @far))
-      (is (= {:a 1 :b 2} m)))))
+#?(:clj
+   (deftest touch-test
+     (testing "touching a fun-map will call all functions inside"
+       (let [far (atom 0)
+             m   (-> (array-map :a (fnk [] (swap! far inc)) :b (fnk [] (swap! far inc)))
+                     fun-map
+                     touch)]
+         (is (= 2 @far))
+         (is (= {:a 1 :b 2} m))))))
 
 (deftest merge-trace-test
   (testing "trace-fn should ok for merging"
@@ -92,33 +102,35 @@
       (is (= {:a 0 :b 1} a))
       (is (= {:a 0 :b 1} @marker)))))
 
-(deftest closeable-test
-  (testing "put a closeable value into life cycle map will get closed"
-    (let [marker (atom 0)
-          m      (touch (life-cycle-map
-                         {:a (fnk [] (closeable 3 #(swap! marker inc)))}))]
-      (is (= {:a 3} m))
-      (halt! m)
-      (is (= 1 @marker)))))
+#?(:clj
+   (deftest closeable-test
+     (testing "put a closeable value into life cycle map will get closed"
+       (let [marker (atom 0)
+             m      (touch (life-cycle-map
+                            {:a (fnk [] (closeable 3 #(swap! marker inc)))}))]
+         (is (= {:a 3} m))
+         (halt! m)
+         (is (= 1 @marker))))))
 
 (deftest fw-test
   (testing "fw macro using normal destructure syntax to define wrapper"
     (is (= {:a 3 :b 5}
            (fun-map {:a (fw {} 3) :b (fw {:keys [a] :focus [a]} (+ a 2))})))))
 
-(deftest fnk-focus-test
-  (testing "fnk automatically focus on its dependencies, re-run when dependencies change"
-    (let [input (atom 5)
-          a (fun-map {:a input :b (fnk [a] (* a 2))})]
-      (touch a)
-      (reset! input 7)
-      (is (= 14 (:b a)))))
-  (testing "if no focus function define, the function wrapper will just invoke once"
-    (let [input (atom [3 4])
-          a (fun-map {:a input :cnt (fw {:keys [a]} (count a))})]
-      (is (= 2 (:cnt a)))
-      (reset! input (range 10))
-      (is (= 2 (:cnt a))))))
+#?(:clj
+   (deftest fnk-focus-test
+     (testing "fnk automatically focus on its dependencies, re-run when dependencies change"
+       (let [input (atom 5)
+             a (fun-map {:a input :b (fnk [a] (* a 2))})]
+         (touch a)
+         (reset! input 7)
+         (is (= 14 (:b a)))))
+     (testing "if no focus function define, the function wrapper will just invoke once"
+       (let [input (atom [3 4])
+             a (fun-map {:a input :cnt (fw {:keys [a]} (count a))})]
+         (is (= 2 (:cnt a)))
+         (reset! input (range 10))
+         (is (= 2 (:cnt a)))))))
 
 (deftest naive-fw-test
   (testing "choose empty wrappers, no value will be cached"
@@ -127,17 +139,19 @@
       (is (= 1 (:a m)))
       (is (= 2 (:a m))))))
 
-(deftest parallel-execution-test
-  (let [a (atom 5)
-        m (fun-map {:a (delay (Thread/sleep 200) @a)
-                    :b (delay (Thread/sleep 200) 20)
-                    :z (delay (Thread/sleep 100) (reset! a 10))
-                    :c (fw {:keys [a b z] :par? true} (* z b))})]
-    (is (= 200 (:c m)))))
+#?(:clj
+   (deftest parallel-execution-test
+     (let [a (atom 5)
+           m (fun-map {:a (delay (Thread/sleep 200) @a)
+                       :b (delay (Thread/sleep 200) 20)
+                       :z (delay (Thread/sleep 100) (reset! a 10))
+                       :c (fw {:keys [a b z] :par? true} (* z b))})]
+       (is (= 200 (:c m))))))
 
 (deftest idempotent-test
   (is (= {} (merge (fun-map (fun-map {})) {}))))
 
-(deftest lookup-test
-  (is (= 3 (get (lookup identity) 3)))
-  (is (= [:foo :foo] (find (lookup identity) :foo))))
+#?(:clj
+   (deftest lookup-test
+     (is (= 3 (get (lookup identity) 3)))
+     (is (= [:foo :foo] (find (lookup identity) :foo)))))

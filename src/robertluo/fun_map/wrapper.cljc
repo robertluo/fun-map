@@ -28,7 +28,13 @@
   ValueWrapper
   (-wrapped? [_] true)
   (-unwrap [_ m k]
-    (f m k)))
+    (f m k))
+  #?@(:cljs
+      [IPrintWithWriter
+       (-pr-writer 
+        [_ wtr _]
+        (-write wtr (str "<<" f ">>")))])
+  )
 
 (def fun-wrapper
   "construct a new FunctionWrapper"
@@ -58,7 +64,16 @@
           new-focus-val (if focus-fn (focus-fn m) ::unrealized)]
       (if (or (= ::unrealized val) (not= new-focus-val focus-val))
         (first (swap! a-val-pair (fn [_] [(-unwrap wrapped m k) new-focus-val])))
-        val))))
+        val)))
+  #?@(:cljs
+      [IPrintWithWriter
+       (-pr-writer
+        [this wtr _]
+        (-write wtr
+                (str "<<"
+                     (let [v (-> (.-a_val_pair this) deref first)]
+                       (if (= ::unrealized v) "unrealized" v))
+                     ">>")))]))
 
 (defn cache-wrapper
   "construct a CachedWrapper"

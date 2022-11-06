@@ -1,22 +1,27 @@
 (ns robertluo.fun-map.helper
   "Helpers for writing wrappers"
   (:require
-   [robertluo.fun-map.util :as util]))
+   #?(:clj [robertluo.fun-map.util :as util])))
 
-(defn let-form
-  "returns a pair first to let or equivalent, and the second to transformed bindings."
-  [fm bindings]
-  #_{:clj-kondo/ignore [:unresolved-symbol]}
-  (util/opt-require
-   '[manifold.deferred]
-   (if (:par? fm)
-     [`manifold.deferred/let-flow
-      (->> bindings
-           (partition 2)
-           (mapcat (fn [[k v]] [k `(manifold.deferred/future ~v)]))
-           vec)]
-     [`let bindings])
-   [`let bindings]))
+#?(:clj
+   (defn let-form
+     "returns a pair first to let or equivalent, and the second to transformed bindings."
+     [fm bindings]
+     #_{:clj-kondo/ignore [:unresolved-symbol]}
+     (util/opt-require
+      '[manifold.deferred]
+      (if (:par? fm)
+        [`manifold.deferred/let-flow
+         (->> bindings
+              (partition 2)
+              (mapcat (fn [[k v]] [k `(manifold.deferred/future ~v)]))
+              vec)]
+        [`let bindings])
+      [`let bindings]))
+   :cljs
+   (defn let-form
+     [_ bindings]
+     [`let bindings]))
 
 (defn destruct-map
   "destruct arg-map of fw macro into different groups"
@@ -79,4 +84,6 @@
             `(~fun-wrapper ~f)
             (or (:wrappers fm) default-wrappers))))
 
-
+(comment
+  (make-fw-wrapper (fn [_]) [] {:keys ['a]} '[(* 2 a)])
+  )

@@ -149,16 +149,23 @@
    :cljs
    (deftype DelegatedMap [m fn-entry]
      IFunMap
-     (-raw-seq [_] (.seq m))
+     (-raw-seq [_] (-seq m))
      Object
      (toString [_] (.toString m))
      (equiv
        [this other]
        (-equiv this other))
-     (keys [_] (.keys m))
+     (keys [_] (keys m))
+     (entries [this] (-seq this))
+     (vals [this] (map second (-seq this)))
+     (has [this k] (-contains-key? this k))
      (get
        [this k not-found]
        (-lookup this k not-found))
+     (forEach
+      [this f]
+      (doseq [[k v] (-seq this)]
+        (f v k)))
 
      IFind
      (-find
@@ -181,8 +188,10 @@
 
      ICollection
      (-conj
-       [_ entry]
-       (DelegatedMap. (-conj m entry) fn-entry))
+       [_ o]
+      (if (satisfies? IFunMap o)
+        (DelegatedMap. (-conj m (-raw-seq o)) fn-entry)
+        (DelegatedMap. (-conj m o) fn-entry)))
 
      IAssociative
      (-assoc [_ k v] (DelegatedMap. (-assoc m k v) fn-entry))
@@ -198,6 +207,11 @@
        [_]
        (-count m))
      
+     IEmptyableCollection
+     (-empty
+      [_]
+      (DelegatedMap. (-empty m) fn-entry))
+     
      IIterable
      (-iterator
       [this]
@@ -211,17 +225,22 @@
      ISeqable
      (-seq
       [this]
-      (let [ite (-iterator this)]
-        (loop [acc nil]
-          (if (.hasNext ite)
-            (recur (conj acc (.next ite)))
-            acc))))
+      (some->> (-seq m)
+               (map #(fn-entry this %))))
 
      IPrintWithWriter
      (-pr-writer
        [_ wtr opts]
        (-write wtr "#fun-map")
        (-pr-writer m wtr opts))
+     
+     IWithMeta
+     (-with-meta
+      [_ meta]
+      (DelegatedMap. (-with-meta m meta) fn-entry))
+     
+     IMeta
+     (-meta [_] (-meta m))
 
      IEditableCollection
      (-as-transient
@@ -243,7 +262,8 @@
 
 (defn fun-map?
   [o]
-  (instance? IFunMap o))
+  #?(:clj (instance? IFunMap o)
+     :cljs (satisfies? IFunMap o)))
 
 #?(:clj
    (do
