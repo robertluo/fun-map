@@ -93,7 +93,7 @@
 (deftest merge-trace-test
   (testing "trace-fn should ok for merging"
     (let [marker  (atom {})
-          trace-f #(swap! marker assoc % %2)
+          _ #(swap! marker assoc % %2)
           a       (fun-map {:a (fnk [] 0)} :trace-fn (fn [k v] (swap! marker conj [k v])))
           b       (fun-map {:b (fnk [a] (inc a))})
           a       (merge a b)]

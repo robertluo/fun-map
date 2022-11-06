@@ -13,6 +13,7 @@
     then-body
     else-body))
 
+#_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
 (defmacro when-require
   "When require `rqr-clause` successfully, do `body`"
   {:style/indent 2}
