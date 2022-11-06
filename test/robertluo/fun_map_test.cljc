@@ -1,6 +1,13 @@
 (ns robertluo.fun-map-test
-  (:require [clojure.test :refer [deftest testing is]]
-            [robertluo.fun-map :refer [fun-map? fnk fun-map closeable life-cycle-map touch halt! fw lookup]]))
+  (:require
+   [clojure.test :refer [deftest testing is]]
+   #?(:clj
+      [robertluo.fun-map :refer [fun-map? fnk fun-map closeable life-cycle-map touch halt! fw lookup halt!]]
+      :cljs
+      [robertluo.fun-map 
+       :as fm
+       :refer [fun-map? fun-map touch life-cycle-map closeable halt!]
+       :refer-macros [fw fnk]])))
 
 (deftest fun-map-test
   (testing "predict funmap"
@@ -40,10 +47,11 @@
     (is (= 11
            (-> (fun-map {:a 2 :b (fnk [a] (inc a))}) (assoc :a 10) :b)))))
 
-(deftest dref-test
-  (testing "delay, future, delayed future value will be deref when accessed"
-    (is (= {:a 3 :b 4 :c 5}
-           (fun-map {:a (delay 3) :b (future 4) :c (delay (future 5))})))))
+#?(:clj
+   (deftest dref-test
+     (testing "delay, future, delayed future value will be deref when accessed"
+       (is (= {:a 3 :b 4 :c 5}
+              (fun-map {:a (delay 3) :b (future 4) :c (delay (future 5))}))))))
 
 (deftest trace-map-test
   (testing "invocation record"
@@ -66,11 +74,11 @@
     (let [close-order (atom [])
           component   (fn [k]
                         (closeable nil
-                          (fn [] (swap! close-order conj k))))
+                                   (fn [] (swap! close-order conj k))))
           sys         (life-cycle-map
                        {:a (fnk [] (component :a)) :b (fnk [a] (component :b))})]
       (:b sys)
-      (.close sys)
+      (halt! sys)
       (is (= [:b :a] @close-order)))))
 
 (deftest touch-test
@@ -85,7 +93,7 @@
 (deftest merge-trace-test
   (testing "trace-fn should ok for merging"
     (let [marker  (atom {})
-          trace-f #(swap! marker assoc % %2)
+          _ #(swap! marker assoc % %2)
           a       (fun-map {:a (fnk [] 0)} :trace-fn (fn [k v] (swap! marker conj [k v])))
           b       (fun-map {:b (fnk [a] (inc a))})
           a       (merge a b)]
@@ -127,17 +135,19 @@
       (is (= 1 (:a m)))
       (is (= 2 (:a m))))))
 
-(deftest parallel-execution-test
-  (let [a (atom 5)
-        m (fun-map {:a (delay (Thread/sleep 200) @a)
-                    :b (delay (Thread/sleep 200) 20)
-                    :z (delay (Thread/sleep 100) (reset! a 10))
-                    :c (fw {:keys [a b z] :par? true} (* z b))})]
-    (is (= 200 (:c m)))))
+#?(:clj
+   (deftest parallel-execution-test
+     (let [a (atom 5)
+           m (fun-map {:a (delay (Thread/sleep 200) @a)
+                       :b (delay (Thread/sleep 200) 20)
+                       :z (delay (Thread/sleep 100) (reset! a 10))
+                       :c (fw {:keys [a b z] :par? true} (* z b))})]
+       (is (= 200 (:c m))))))
 
 (deftest idempotent-test
   (is (= {} (merge (fun-map (fun-map {})) {}))))
 
-(deftest lookup-test
-  (is (= 3 (get (lookup identity) 3)))
-  (is (= [:foo :foo] (find (lookup identity) :foo))))
+#?(:clj
+   (deftest lookup-test
+     (is (= 3 (get (lookup identity) 3)))
+     (is (= [:foo :foo] (find (lookup identity) :foo)))))

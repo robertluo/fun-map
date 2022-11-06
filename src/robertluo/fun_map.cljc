@@ -1,9 +1,10 @@
 (ns robertluo.fun-map
   "fun-map Api"
-  (:require [robertluo.fun-map
-             [core :as core]
-             [wrapper :as wrapper]
-             [helper :as helper]]))
+  (:require
+   [robertluo.fun-map.core :as core]
+   [robertluo.fun-map.wrapper :as wrapper]
+   #?(:clj
+      [robertluo.fun-map.helper :as helper])))
 
 (defn fun-map
   "Returns a new fun-map.
@@ -37,19 +38,13 @@
   [m]
   (core/fun-map? m))
 
-;;Automatically unwrap IDeref
-(extend-protocol wrapper/ValueWrapper
-  clojure.lang.IDeref
-  (-wrapped? [_] true)
-  (-unwrap [d _ _]
-    (deref d)))
-
 (comment
   (fun-map {:a 1 :b 5 :c (wrapper/fun-wrapper (fn [m _] (let [a (get m :a) b (get m :b)] (+ a b))))})
   )
 
-(defmacro fw
-  "Returns a FunctionWrapper of an anonymous function defined by body.
+#?(:clj
+   (defmacro fw
+     "Returns a FunctionWrapper of an anonymous function defined by body.
 
    Since a FunctionWrapper's function will be called with the map itself as the
    argument, this macro using a map `arg-map` as its argument. It follows the
@@ -74,28 +69,31 @@
          :trace (fn [k v] (println k v))
          :focus (select-keys m [:a :b])}
       (+ a b))"
-  {:style/indent 1}
-  [arg-map & body]
-  (helper/make-fw-wrapper wrapper/fun-wrapper [:trace :cache] arg-map body))
+     {:style/indent 1}
+     [arg-map & body]
+     (helper/make-fw-wrapper `wrapper/fun-wrapper [:trace :cache] arg-map body)))
 
-(defmethod helper/fw-impl :trace
-  [{:keys [f options]}]
-  `(wrapper/trace-wrapper ~f ~(:trace options)))
+#?(:clj
+   (defmethod helper/fw-impl :trace
+     [{:keys [f options]}]
+     `(wrapper/trace-wrapper ~f ~(:trace options))))
 
-(defmethod helper/fw-impl :cache
-  [{:keys [f options arg-map]}]
-  (let [focus (when-let [focus (:focus options)]
-                `(fn [~arg-map] ~focus))]
-    `(wrapper/cache-wrapper ~f ~focus)))
+#?(:clj
+   (defmethod helper/fw-impl :cache
+     [{:keys [f options arg-map]}]
+     (let [focus (when-let [focus (:focus options)]
+                   `(fn [~arg-map] ~focus))]
+       `(wrapper/cache-wrapper ~f ~focus))))
 
-(defmacro fnk
-  "A shortcut for `fw` macro. Returns a simple FunctionWrapper which depends on
+#?(:clj
+   (defmacro fnk
+     "A shortcut for `fw` macro. Returns a simple FunctionWrapper which depends on
   `args` key of the fun-map, it will *focus* on the keys also."
-  {:style/indent 1}
-  [args & body]
-  `(fw {:keys  ~args
-        :focus ~args}
-       ~@body))
+     {:style/indent 1}
+     [args & body]
+     `(fw {:keys  ~args
+           :focus ~args}
+          ~@body)))
 
 ;;;;;; life cycle map
 
@@ -105,16 +103,12 @@
   (doseq [[_ _] m] nil)
   m)
 
-(defprotocol Haltable
-  "Life cycle protocol, signature just like java.io.Closeable,
-  being a protocol gives user ability to extend"
-  (halt! [this]))
-
+#?(:clj
 ;; make it compatible with java.io.Closeable
-(extend-protocol Haltable
-  java.io.Closeable
-  (halt! [this]
-    (.close this)))
+   (extend-protocol core/Haltable
+     java.io.Closeable
+     (halt! [this]
+       (.close this))))
 
 (defn life-cycle-map
   "returns a fun-map can be shutdown orderly.
@@ -127,22 +121,25 @@
   [m]
   (let [components (atom [])
         trace-fn (fn [_ v]
-                   (when (satisfies? Haltable v)
+                   (when (satisfies? core/Haltable v)
                      (swap! components conj v)))
         sys        (fun-map m :trace-fn trace-fn)
         halt-fn (fn [_]
                   (doseq [component (reverse @components)]
-                    (halt! component)))]
+                    (core/-halt! component)))]
     (vary-meta sys assoc ::core/close-fn halt-fn)))
 
 ;;;;;;;;;;; Utilities
+(def halt!
+  "stop working on a resource"
+  core/-halt!)
 
 (deftype CloseableValue [value close-fn]
-  clojure.lang.IDeref
-  (deref [_]
-    value)
-  java.io.Closeable
-  (close [_]
+  #?(:clj clojure.lang.IDeref :cljs IDeref)
+  #?(:clj (deref [_] value)
+     :cljs (-deref [_] value))
+  core/Haltable
+  (core/-halt! [_]
     (close-fn)))
 
 (defn closeable
@@ -154,13 +151,14 @@
   [r close-fn]
   (->CloseableValue r close-fn))
 
-(defn lookup
-  "Returns a ILookup object for calling f on k"
-  [f]
-  (reify clojure.lang.Associative
-    (entryAt [this k]
-      (clojure.lang.MapEntry. k (.valAt this k)))
-    (valAt [_ k]
-      (f k))
-    (valAt [this k not-found]
-      (or (.valAt this k) not-found))))
+#?(:clj
+   (defn lookup
+     "Returns a ILookup object for calling f on k"
+     [f]
+     (reify clojure.lang.Associative
+       (entryAt [this k]
+         (clojure.lang.MapEntry. k (.valAt this k)))
+       (valAt [_ k]
+         (f k))
+       (valAt [this k not-found]
+         (or (.valAt this k) not-found)))))

@@ -4,9 +4,14 @@
    [clojure.test :refer [deftest is testing]]))
 
 (deftest delegate-map
+  (testing "methods implementation"
+    (is (= (sut/delegate-map {} second) {})))
   (testing "delegate-map with entry simple pass is a normal map"
     (let [m (sut/delegate-map {:a 1 :b 2} (fn [_ [k v]] [k (* 2 v)]))]
-      (is (= {:a 2 :b 4} m)))))
+      (is (= 4 (get m :b)))
+      (is (= 2 (count m)))
+      (is (= {:a 2 :b 4} m))
+      (is (= m {:a 2 :b 4})))))
 
 (deftest transient-test
   (letfn [(wrap-m [m f] (-> m (sut/delegate-map (fn [_ [k v]] [k (* 2 v)])) transient f persistent!))]
@@ -14,3 +19,11 @@
     (is (= {:a 2} (wrap-m {} #(assoc! % :a 1))))
     (is (= {:a 2} (wrap-m {} #(conj! % [:a 1]))))
     (is (= {:b 4} (wrap-m {} #(-> % (conj! [:a 1]) (conj! [:b 2]) (dissoc! :a)))))))
+
+#?(:cljs
+   (deftest map-compatibility
+     (testing "If it compatible to map's expected behavior"
+       (let [m (sut/delegate-map {:a 1 :b 2 :c 3} (fn [_ [k v]] [k (* 2 v)]))]
+         (is (= [:a :b :c] (keys m)))
+         (is (= [2 4 6] (vals m)))
+         (is (= [[:a 2] [:b 4] [:c 6]] (.entries m)))))))
