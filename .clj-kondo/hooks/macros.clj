@@ -4,13 +4,14 @@
   (:require [clj-kondo.hooks-api :as api]))
 
 (defn fw [{:keys [node]}]
-  (let [[m & body] (-> node :children rest)
-        new-node (api/list-node
-                  (list*
-                   (api/token-node 'fn)
-                   (api/vector-node [(api/token-node '_) m])
-                   body))]
-    {:node new-node}))
+  (let [[m & body] (-> node :children rest)]
+    (when (not= (:tag m) :map)
+     (throw (ex-info "fw need a map as its first argument" {})))
+    {:node (api/list-node
+            (list*
+             (api/token-node 'clojure.core/fn)
+             (api/vector-node [(api/token-node '_) m])
+             body))}))
 
 (comment
   (def node (api/parse-string "(fw {:keys [a b]} (+ a b))"))
@@ -18,15 +19,16 @@
   )
 
 (defn fnk [{:keys [node]}]
-  (let [[args & body] (-> node :children :rest)
+  (let [[arg-vec & body] (-> node :children rest)
         new-node (api/list-node
                   (list*
-                   (api/token-node 'fn)
-                   args
+                   (api/token-node 'fw)
+                   (api/map-node [(api/keyword-node :keys) arg-vec])
                    body))]
     {:node new-node}))
 
 (comment
-  (def node (api/parse-string "(fnk [a b] (+ a b))"))
+  (api/map-node [(api/token-node 'a) (api/token-node 'b)])
+  (def node (api/parse-string "(fnk [a b] (+ a b))")) 
   (:node (fnk {:node node}))
   )
