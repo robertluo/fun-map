@@ -21,7 +21,7 @@
     (is (= (fun-map {:a 3 :b (fnk [a] (inc a))}) {:a 3 :b 4})))
 
   (testing "function will be invoked just once"
-    (let [f (let [z (atom 0)]
+    (let [f (let [_ (atom 0)]
               (fnk [a] (+ (swap! z inc) a)))
           m (fun-map {:a 3 :b f})]
       (is (= {:a 3 :b 4} m))
@@ -72,9 +72,9 @@
 (deftest life-cycle-map-test
   (testing "a life cycle map will halt! its components in order"
     (let [close-order (atom [])
-          component   (fn [k]
-                        (closeable nil
-                                   (fn [] (swap! close-order conj k))))
+          _   (fn [k]
+                (closeable nil
+                           (fn [] (swap! close-order conj k))))
           sys         (life-cycle-map
                        {:a (fnk [] (component :a)) :b (fnk [a] (component :b))})]
       (:b sys)
@@ -141,7 +141,7 @@
            m (fun-map {:a (delay (Thread/sleep 200) @a)
                        :b (delay (Thread/sleep 200) 20)
                        :z (delay (Thread/sleep 100) (reset! a 10))
-                       :c (fw {:keys [a b z] :par? true} (* z b))})]
+                       :c (fw {:keys [_ b z] :par? true} (* z b))})]
        (is (= 200 (:c m))))))
 
 (deftest idempotent-test
