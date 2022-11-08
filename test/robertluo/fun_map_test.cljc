@@ -22,7 +22,7 @@
 
   (testing "function will be invoked just once"
     (let [f (let [z (atom 0)]
-              (fnk [a] (+ (swap! z inc) a)))
+              (fw {:keys [a]} (+ (swap! z inc) a)))
           m (fun-map {:a 3 :b f})]
       (is (= {:a 3 :b 4} m))
       (is (= {:a 3 :b 4} m))))
@@ -141,7 +141,7 @@
            m (fun-map {:a (delay (Thread/sleep 200) @a)
                        :b (delay (Thread/sleep 200) 20)
                        :z (delay (Thread/sleep 100) (reset! a 10))
-                       :c (fw {:keys [a b z] :par? true} (* z b))})]
+                       :c (fw {:keys [_ b z] :par? true} (* z b))})]
        (is (= 200 (:c m))))))
 
 (deftest idempotent-test
