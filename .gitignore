@@ -14,7 +14,7 @@ pom.xml.asc
 .settings/
 .project
 .classpath
-.clj-kondo/.cache/
+.clj-kondo/
 .lsp/
 .calva/
 .cljs_node_repl/

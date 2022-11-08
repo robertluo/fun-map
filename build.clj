@@ -17,12 +17,12 @@
       (cb/run-task [:dev :cljs-test])))
 
 (defn copy-clj-kondo-config 
-  [{:keys [lib class-dir] :as opts :or {class-dir (cb/default-class-dir)}}]
-  (let [target-dir (str class-dir "/clj-kondo.exports/" lib)]
-    (b/copy-file {:src ".clj-kondo/config.edn" :target (str target-dir "/config.edn")})
-    (b/copy-dir {:src-dirs [".clj-kondo/hooks"] 
-                 :target-dir (str target-dir "/hooks")}))
-  opts)
+  [opts]
+  (let [{:keys [lib] :as opts :or {class-dir (cb/default-class-dir)}} (project opts)
+        config-dir (str "resources/clj-kondo.exports/" lib)]
+    (b/copy-dir {:src-dirs [config-dir]
+                 :target-dir ".clj-kondo"})
+    opts))
 
 (defn ci
   [opts]
@@ -30,7 +30,6 @@
       (project)
       (cb/clean)
       (tests)
-      (copy-clj-kondo-config)
       (cb/jar)))
 
 (defn deploy
