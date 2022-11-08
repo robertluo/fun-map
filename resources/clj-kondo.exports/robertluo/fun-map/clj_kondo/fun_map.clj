@@ -1,4 +1,4 @@
-(ns hooks.macros
+(ns clj-kondo.fun-map
   "hooks for macros. 
    https://github.com/clj-kondo/clj-kondo/blob/master/doc/hooks.md"
   (:require [clj-kondo.hooks-api :as api]))

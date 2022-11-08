@@ -1,3 +1,0 @@
-{:hooks {:analyze-call {robertluo.fun-map/fw hooks.macros/fw
-                        robertluo.fun-map/fnk hooks.macros/fnk}}
- :config-in-call {robertluo.fun-map/fw {:linters {:unused-binding {:level :off}}}}}

@@ -1,0 +1,2 @@
+{:hooks {:analyze-call {robertluo.fun-map/fw clj-kondo.fun-map/fw
+                        robertluo.fun-map/fnk clj-kondo.fun-map/fnk}}}

@@ -76,7 +76,7 @@
                         (closeable nil
                                    (fn [] (swap! close-order conj k))))
           sys         (life-cycle-map
-                       {:a (fnk [] (component :a)) :b (fnk [a] (component :b))})]
+                       {:a (fnk [] (component :a)) :b (fnk [a] a (component :b))})]
       (:b sys)
       (halt! sys)
       (is (= [:b :a] @close-order)))))
