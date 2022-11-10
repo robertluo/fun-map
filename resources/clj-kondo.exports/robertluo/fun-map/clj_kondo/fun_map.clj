@@ -22,7 +22,7 @@
   (let [[arg-vec & body] (-> node :children rest)
         new-node (api/list-node
                   (list*
-                   (api/token-node 'fw)
+                   (api/token-node 'robertluo.fun-map/fw)
                    (api/map-node [(api/keyword-node :keys) arg-vec])
                    body))]
     {:node new-node}))

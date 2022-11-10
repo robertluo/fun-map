@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer [deftest testing is]]
    #?(:clj
-      [robertluo.fun-map :refer [fun-map? fnk fun-map closeable life-cycle-map touch halt! fw lookup halt!]]
+      [robertluo.fun-map :refer [fun-map? fnk fw fun-map closeable life-cycle-map touch halt! lookup halt!]]
       :cljs
       [robertluo.fun-map 
        :as fm
