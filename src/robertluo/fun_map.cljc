@@ -103,12 +103,22 @@
   (doseq [[_ _] m] nil)
   m)
 
+(defprotocol Haltable
+  "Life cycle protocol, signature just like java.io.Closeable,
+  being a protocol gives user ability to extend"
+  (halt! [this]))
+
 #?(:clj
-;; make it compatible with java.io.Closeable
-   (extend-protocol core/Haltable
+   (extend-protocol Haltable
      java.io.Closeable
      (halt! [this]
-       (.close this))))
+       (.close this)))
+   :cljs
+   (extend-protocol Haltable
+     core/DelegatedMap
+     (halt! [this]
+       (when-let [close-fn (some-> this meta ::core/close-fn)]
+         (close-fn this)))))
 
 (defn life-cycle-map
   "returns a fun-map can be shutdown orderly.
@@ -121,25 +131,22 @@
   [m]
   (let [components (atom [])
         trace-fn (fn [_ v]
-                   (when (satisfies? core/Haltable v)
+                   (when (satisfies? Haltable v)
                      (swap! components conj v)))
         sys        (fun-map m :trace-fn trace-fn)
         halt-fn (fn [_]
                   (doseq [component (reverse @components)]
-                    (core/-halt! component)))]
+                    (halt! component)))]
     (vary-meta sys assoc ::core/close-fn halt-fn)))
 
 ;;;;;;;;;;; Utilities
-(def halt!
-  "stop working on a resource"
-  core/-halt!)
 
 (deftype CloseableValue [value close-fn]
   #?(:clj clojure.lang.IDeref :cljs IDeref)
   #?(:clj (deref [_] value)
      :cljs (-deref [_] value))
-  core/Haltable
-  (core/-halt! [_]
+  Haltable
+  (halt! [_]
     (close-fn)))
 
 (defn closeable

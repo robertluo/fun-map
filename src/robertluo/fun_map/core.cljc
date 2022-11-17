@@ -65,6 +65,11 @@
 ;; The magic happens on function `fn-entry`, which takes the delegated map
 ;; itself and a pair of kv as arguments. Returns a pair of kv.
    (deftype DelegatedMap [^IPersistentMap m fn-entry]
+     java.io.Closeable
+     (close
+      [this]
+      (when-let [close-fn (some-> this meta ::close-fn)]
+        (close-fn this)))
      IFunMap
      (rawSeq [_]
        (.seq m))
@@ -269,15 +274,3 @@
 
      (prefer-method print-method IFunMap clojure.lang.IPersistentMap)
      (prefer-method print-method IFunMap java.util.Map)))
-
-(defprotocol Haltable
-  "Life cycle protocol, signature just like java.io.Closeable,
-  being a protocol gives user ability to extend"
-  (-halt! [this]))
-
-(extend-protocol Haltable
-  DelegatedMap
-  (-halt!
-    [this]
-    (when-let [close-fn (some-> (#?(:clj .meta :cljs -meta) this) ::close-fn)]
-      (close-fn this))))
