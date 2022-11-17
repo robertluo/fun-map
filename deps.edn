@@ -4,7 +4,8 @@
             :extra-deps  {manifold/manifold   {:mvn/version "0.2.4"}
                           org.clojure/clojurescript {:mvn/version "1.11.60"}}}
            :test     ;run tests under console. e.g. clj -M:dev:test
-           {:extra-deps {lambdaisland/kaocha {:mvn/version "1.71.1119"}}
+           {:extra-deps {lambdaisland/kaocha {:mvn/version "1.71.1119"}
+                         lambdaisland/kaocha-cloverage {:mvn/version "1.1.89"}}
             :main-opts  ["-m" "kaocha.runner"]}
            :cljs-test
            {:extra-paths ["test"]

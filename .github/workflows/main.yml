@@ -32,3 +32,4 @@ jobs:
         path: ~/.m2
         key: default-build
     - run: clojure -T:build ci
+    - uses: codecov/codecov-action@v3

@@ -47,6 +47,7 @@
 
 ### 0.5
  - Change version naming convention from `major.minor.patch` to `major.minor.commit-count`.
+ - Support clojurescript
  
 ### 0.4
 
