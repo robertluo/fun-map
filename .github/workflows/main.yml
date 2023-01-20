@@ -24,9 +24,9 @@ jobs:
     # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
     - uses: actions/checkout@v3
 
-    - uses: DeLaGuardo/setup-clojure@10.0
+    - uses: DeLaGuardo/setup-clojure@10.1
       with:
-        cli: '1.11.1.1189'
+        cli: '1.11.1.1208'
     - uses: actions/cache@v3
       with:
         path: ~/.m2
