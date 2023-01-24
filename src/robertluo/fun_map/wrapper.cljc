@@ -3,7 +3,7 @@
 
 (defprotocol ValueWrapper
   "A wrapper for a value."
-  (-wrapped? [this]
+  (-wrapped? [this m]
     "is this a wrapper?")
   (-unwrap [this m k]
     "unwrap the real value from a wrapper on the key of k"))
@@ -12,21 +12,22 @@
 #?(:clj
    (extend-protocol ValueWrapper
      Object
-     (-wrapped? [_] false)
+     (-wrapped? [_ _] false)
      (-unwrap [this _ k]
        (ex-info "Unwrap a common value" {:key k :value this}))
      nil
-     (-wrapped? [_] false)
+     (-wrapped? [_ _] false)
      (-unwrap [_ _ k]
        (ex-info "Unwrap a nil" {:key k}))
      clojure.lang.IDeref
-     (-wrapped? [_] true)
+     (-wrapped? [_ m]
+       (not (some-> m meta ::keep-ref)))
      (-unwrap [d _ _]
        (deref d))))
 
 (deftype FunctionWrapper [f]
   ValueWrapper
-  (-wrapped? [_] true)
+  (-wrapped? [_ _] true)
   (-unwrap [_ m k]
     (f m k))
   #?@(:cljs
@@ -45,7 +46,7 @@
    If `v` is a wrapped, then recursive unwrap it."
   [m [k v]]
   #?(:clj
-     (if (-wrapped? v)
+     (if (-wrapped? v m)
        (recur m [k (-unwrap v m k)])
        [k v])
      :cljs
@@ -58,7 +59,7 @@
 
 (deftype CachedWrapper [wrapped a-val-pair focus-fn]
   ValueWrapper
-  (-wrapped? [_] true)
+  (-wrapped? [_ _] true)
   (-unwrap [_ m k]
     (let [[val focus-val] @a-val-pair
           new-focus-val (if focus-fn (focus-fn m) ::unrealized)]
@@ -82,7 +83,7 @@
 
 (deftype TracedWrapper [wrapped trace-fn]
   ValueWrapper
-  (-wrapped? [_] true)
+  (-wrapped? [_ _] true)
   (-unwrap [_ m k]
     (let [v (-unwrap wrapped m k)]
       (when-let [trace-fn (or trace-fn (some-> m meta :robertluo.fun-map/trace))]

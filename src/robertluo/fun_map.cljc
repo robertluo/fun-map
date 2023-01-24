@@ -28,10 +28,10 @@
   Example:
 
     (fun-map {:a 35 :b (delay (println \"hello from b!\"))}"
-  [m & {:keys [trace-fn]}]
+  [m & {:keys [trace-fn keep-ref]}]
   (with-meta
     (core/delegate-map m wrapper/wrapper-entry)
-    {::trace trace-fn}))
+    {::trace trace-fn ::wrapper/keep-ref keep-ref}))
 
 (defn fun-map?
   "If m is a fun-map"
