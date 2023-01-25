@@ -12,6 +12,7 @@
 (deftest fun-map-test
   (testing "predict funmap"
     (is (= true (fun-map? (fun-map {})))))
+  
   (testing "computed attribute of other attributes"
     (is (= 10 (:c (fun-map {:a/a 3 :b 7 :c (fnk [:a/a b] (+ a b))}))))
     (is (= 1000 (:c (fun-map {:a 10 :b (fnk [a] (* a a)) :c (fnk [b] (* 10 b))})))))
@@ -51,7 +52,9 @@
    (deftest dref-test
      (testing "delay, future, delayed future value will be deref when accessed"
        (is (= {:a 3 :b 4 :c 5}
-              (fun-map {:a (delay 3) :b (future 4) :c (delay (future 5))}))))))
+              (fun-map {:a (delay 3) :b (future 4) :c (delay (future 5))}))))
+     #_(testing "with :no-ref specified, ref value will not automatically dereffed"
+       (is (= 3 (-> (fun-map {:a (delay 3)} :no-ref true) :a deref))))))
 
 (deftest trace-map-test
   (testing "invocation record"

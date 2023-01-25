@@ -4,6 +4,23 @@
 [![Clojars Project](https://img.shields.io/clojars/v/robertluo/fun-map.svg)](https://clojars.org/robertluo/fun-map)
 [![cljdoc badge](https://cljdoc.xyz/badge/robertluo/fun-map)](https://cljdoc.xyz/d/robertluo/fun-map/CURRENT)
 
+Fun-map is a Clojure(Script) map data structure. The difference between it and a normal map is:
+
+ - A function can be invoked when you try to access one map entry.
+
+## Usage scenarios
+
+### As a lazy map
+
+If you put a `clojure.lang.IDeRef` instance like a deferred value (created by `defer`) or future into the map, `deref` will be automatically called when you access it. This way, the map can be thought as a lazy map.
+
+```clojure
+(def m (fun-map {:a (defer (+ 5 3))}))
+(:a m) ;=> 8
+```
+
+You can specify `:keep-ref` to disable this feature.
+
 ## TL;DR show me the code!
 
 ```clojure
