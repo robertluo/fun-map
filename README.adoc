@@ -1,0 +1,70 @@
+= fun-map, a data structure blurs the line between identity, state and function
+
+image::https://github.com/robertluo/fun-map/actions/workflows/main.yml/badge.svg[CI,link=https://github.com/robertluo/fun-map/actions/workflows/main.yml]
+image::https://img.shields.io/clojars/v/robertluo/fun-map.svg)[Clojars Project,link=https://clojars.org/robertluo/fun-map]
+image::https://cljdoc.xyz/badge/robertluo/fun-map[cljdoc,link=https://cljdoc.xyz/d/robertluo/fun-map/CURRENT]
+
+Fun-map is a Clojure(Script) map data structure. The difference between it and a normal map is: the values are evaluated until you take the value of it.
+
+== Usage scenarios
+
+=== as a lazy map
+
+If you put a `clojure.lang.IDeRef` instance like a deferred value (created by `defer`) or future into the map, `deref` will be automatically called when you access it. This way, the map can be thought of as a lazy map.
+
+[source,clojure]
+----
+(def m (fun-map {:a (future (+ 5 3))}))
+(:a m) ;=> 8
+----
+
+You can specify `:keep-ref` to disable this default feature, and use `fun-map/lazy` to force it to be lazy for individual values.
+
+=== dependent injection
+
+Your values can now depend on the map itself, most commonly on other values.
+
+[source,clojure]
+----
+(def m
+  (fun-map {:numbers (range 10)
+            :cnt     (fnk [numbers] (count numbers))
+            :sum     (fnk [numbers] (apply + numbers))
+            :average (fnk [cnt sum] (/ sum cnt))}))
+----
+This feature is similar to https://github.com/plumatic/plumbing[Plumatic Plumbing's graph], it even has the same name `fnk` macro! The difference is that fun-map is a normal map, you could update the values (and the `fnk` function) at any time. You could use a plain map if you want to test some complex computations.
+
+=== lifecycle management
+
+A fun-map can track the realization order of its values by specifying a `:trace-fn` option, combine this and the dependency injection nature, leads to a simple lifecycle management feature.
+`life-cycle-map` is a fun-map that can orderly close your lifecycle components.
+
+[source,clojure]
+----
+(def system
+  (life-cycle-map
+    {:component/a
+     (fnk []
+       (closeable 100 #(println "halt :a"))) <1>
+     :component/b
+     (fnk [:component/a]
+       (closeable (inc a) #(println "halt :b")))}))
+(touch system) <2>
+(halt! system) <3>
+----
+<1> `closeable` function turns a value to a closeable value, the specified close function will be called when the whole system is being `close`. 
+<2> `touch` travels the system, and makes potential lazy values realized, in a real application, you may not want to do it.
+<3> `halt!` is a function close the a closeable value.
+
+== Development
+
+Fun-map using [kaocha](https://github.com/lambdaisland/kaocha) as the test runner.
+
+ - use `clj -M:test --watch` to automatically run tests whenever code changes.
+
+== License
+
+Copyright © 2018, 2019, 2022 Robertluo
+
+Distributed under the Eclipse Public License either version 1.0 or (at
+your option) any later version.
