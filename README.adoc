@@ -1,4 +1,5 @@
 = fun-map, a data structure blurs the line between identity, state and function
+:icons: font
 
 image:https://github.com/robertluo/fun-map/actions/workflows/main.yml/badge.svg[CI,link=https://github.com/robertluo/fun-map/actions/workflows/main.yml]
 image:https://img.shields.io/clojars/v/robertluo/fun-map.svg)[Clojars Project,link=https://clojars.org/robertluo/fun-map]
@@ -46,12 +47,12 @@ A fun-map can track the realization order of its values by specifying a `:trace-
   (life-cycle-map
     {:component/a
      (fnk []
-       (closeable 100 #(println "halt :a"))) <1>
+       (closeable 100 #(println "halt :a"))) ;;<1>
      :component/b
      (fnk [:component/a]
        (closeable (inc a) #(println "halt :b")))}))
-(touch system) <2>
-(halt! system) <3>
+(touch system) ;;<2>
+(halt! system) ;;<3>
 ----
 <1> `closeable` function turns a value to a closeable value, the specified close function will be called when the whole system is being `close`. 
 <2> `touch` travels the system, and makes potential lazy values realized, in a real application, you may not want to do it.
@@ -71,14 +72,14 @@ Some of the most frequently used APIs are:
 ----
 (defn book-of
   [connection author]
-  (-> (fun-map {:datomic/db (fnk [:datomic/connection] (d/db connection)) <1>
+  (-> (fun-map {:datomic/db (fnk [:datomic/connection] (d/db connection)) ;;<1>
                 :books (fnk [:datomic/db author]
                          (d/q '[:find ?e 
                                 :in $ ?name
                                 :where [?e :book/author ?name]]
                                db author))
                 :book-count (fnk [books] (count books))})
-      (assoc :datomic/connection connection :author author))) <2>
+      (assoc :datomic/connection connection :author author))) ;;<2>
 (book-system (d/connect "datomic:mem://books") "Harry Potter")
 ----
 <1> `fnk` accepts namespaced keywords.

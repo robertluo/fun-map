@@ -51,7 +51,7 @@ Accessing `:average` value of `m` will make fun-map call it and in turns accessi
   (* a b))
 ----
 
-You may notice that `fw` does not take a vector as its argument, but a map. That's because a function wrapped in can only take a map as its single argument, so the macro saved you a pair of square bracket. It follows same syntax as [standard associative destructrue](https://clojure.org/guides/destructuring#_associative_destructuring).
+You may notice that `fw` does not take a vector as its argument, but a map. That's because a function wrapped in can only take a map as its single argument, so the macro saved you a pair of square bracket. It follows same syntax as https://clojure.org/guides/destructuring#_associative_destructuring[standard associative destructrue].
 
 ## Wrapper decorators
 
