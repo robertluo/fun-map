@@ -1,0 +1,123 @@
+# Concepts
+
+## Value Wrapper
+
+A value wrapper is anything wrapped a value inside. The consumer of a wrapper just interests in the value, it is the provider who concerns about how it wraps. In a fun-map, when accessed by key, the consumer just get the wrapped value, ignoring the difference of the wrapper itself. This frees up for consumer to change code if the wrapper itself changes. Practically, the consumer can just assume it is a plain value, fun-map will unwrap it.
+
+Simple value wrappers are `clojure.lang.IDeref` instances, like `delay`, `future`, `promise` which can not change its wrapped value once realized; `atom`, `ref`, `agent` are also wrappers, but their wrapped value can change. Fun-map blurs the line between all these wrappers. For example:
+
+[source,clojure]
+----
+(def m (fun-map {:numbers (delay [3 4])}))
+
+(defn f [{:keys [numbers]}]
+  (apply * numbers))
+----
+
+The author of f can just use plain value map `{:a [3 4]}` to test, but use `m` as the argument later.
+
+## Function Wrapper
+
+What takes fun-map even further is that a function takes a map as its argument can be treated as value wrapper. The wrapped value will be returned when call it. `fw` macro will define such wrapper inline:
+
+[source,clojure]
+----
+(def m (fun-map {:numbers (fw {} [3 4])}))
+----
+
+And author of `f` can also treat it as a normal map!
+
+## Chained Function Wrapper
+
+The function wrappers' map argument is the fun-map contained it, so by putting different function wrappers inside a fun-map, meaning it provides a new way to construct a function invoking path.
+
+[source,clojure]
+----
+(def m (fun-map {:numbers [3 4]
+                 :cnt (fw {:keys [numbers]} (count numbers))
+                 :average (fw {:keys [numbers cnt]}
+                            (/ (reduce + 0 numbers) cnt))}))
+----
+
+Accessing `:average` value of `m` will make fun-map call it and in turns accessing its `:numbers` and `:cnt` values, and the later is another function wrapper, which make the `:average` function indirectly calling `:cnt` function inside.
+
+## `fw` macro
+
+`fw` macro can be used to create an anonymous function with its wrapper like in the above examples.
+
+[source,clojure]
+----
+(fw {:keys [:a/a :b] :or {a 10 b 20}}
+  (* a b))
+----
+
+You may notice that `fw` does not take a vector as its argument, but a map. That's because a function wrapped in can only take a map as its single argument, so the macro saved you a pair of square bracket. It follows same syntax as [standard associative destructrue](https://clojure.org/guides/destructuring#_associative_destructuring).
+
+## Wrapper decorators
+
+In addition to simple function wrapper, we can use wrapper decorators to provide more, you can use `:wrappers` key in `fw`'s argument map:
+
+[source,clojure]
+----
+(fw {:keys [a] :wrappers []}
+  (inc a))
+----
+
+This will create a non-decorated plain function wrapper.
+
+[source,clojure]
+----
+(fw {:keys [a]}
+  (inc a))
+----
+
+Without specify `:wrappers`, the created wrapper will have default decorators `[:trace :cache]`.
+
+### `:cache` decorator
+
+A function wrapper can have a focus function to define whether it should be re-unwrapped, if the return value of the function keeps same, it will just return a cached return value. So the focus function need to be very efficient (at least much faster than the wrapped function itself) and pure functional. If no focus function provided, the function wrapper will just be invoked once.
+
+[source,clojure]
+----
+(def m (fun-map {:numbers (atom [5 3])
+                 :other-content (range 1000)
+                 :cnt (fw {:keys [numbers] :focus numbers}
+                        (count numbers))}))
+----
+
+The function inside `:cnt` will only be invoked if `:numbers` changes. `fnk` macro can be used instead of `fw` for keys destructuring and focus on these keys:
+
+[source,clojure]
+----
+(fnk [numbers] (count numbers))
+----
+
+### `:trace` decorator
+
+Sometimes you want to know when your function wrapper really called wrapped function, you could attach this trace functions to it by `:trace` option:
+
+[source,clojure]
+----
+(def m (fun-map {:numbers (atom [5 3])
+                 :cnt (fw {:keys [numbers]
+                           :trace (fn [k v] (println "key is:" k "value is:" v))}
+                        (count numbers))}))
+----
+
+### Map shared trace function
+
+The fun-map function itself has a `:trace-fn` function can apply to all function wrappers inside.
+
+### Parallel accessing dependencies
+
+With manifold's excellent `let-flow` macro and its `future` function, if you have it in your class path, specify `:par? true` in `fw` macro will make a function wrapper accessing its dependencies in managed threads.
+
+[source,clojure]
+----
+(def m (fun-map {:a (delay (Thread/sleep 3000) 20)
+                 :b (delay (Thread/sleep 3000) 30)
+                 :c (fw {:keys [a b] :par? true} (* a b))}))
+
+(time (:c m)) ;=> 600 in approx. 3000msec instead of 6000
+----
+

@@ -1,0 +1,13 @@
+# Rationale
+
+In Clojure, code is data, the fun-map turns value fetching function call into map value accessing.
+
+For example, when we store a delay as a value inside a map, we may want to retrieve the value wrapped inside, not the delayed object itself, i.e. a `deref` automatically be called when accessed by the map's key. This way, we can treat it as if it is a plain map, without the time difference between when you store and when you retrieve it. There are libraries that exist for this purpose commonly known as *lazy map*.
+
+Likewise, we may want to store a future object to a map, then when accessing it, its value retrieving will happen in another thread, which is useful when you want parallels realizing your values. Maybe we will call this *future map*?
+
+How about combining them? Maybe a *delayed future map*?
+
+There is a widely used libraries https://github.com/plumatic/plumbing[prismatic graph], stores functions as map values, by specifying which keys they depend on, a map can be compiled to traverse the map.
+
+One common thing in the above scenarios is that if we store something in a map as a value, it is intuitive that we care just about its underlying real value, no matter when it can be accessed, or what its execution order is. As long as it won't change its value once referred, it will be treated as a plain value.

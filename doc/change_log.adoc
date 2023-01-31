@@ -1,0 +1,24 @@
+# Changes
+
+## 0.5
+
+ - Change version naming convention from `major.minor.patch` to `major.minor.commit-count`.
+ - Support clojurescript
+ 
+## 0.4
+
+ - Introduce `robertluo.pull/pull` function to pull information.
+
+## 0.3
+
+ - `fw` macro now is more flexible, you can use `:wrappers` to specify underlying wrapper implementations.
+ - optional spec checker with `:spec` specify the return value's spec. Will check if it conform the spec.
+ - optional parallel execution with `:par? true` specified in `fw` and with [manifold](https://github.com/ztellman/manifold) in your project's dependencies.
+ - `print-method` for better developing experience. When you print the content of a fun map, the wrapped function will not be invoked. You can use `(into {} m)` to print everything inside it though.
+ - introduce `lookup` function allowing transform any function as a part of the map.
+
+## Breakings
+
+> Breaking change since 0.1.x: normal function inside fun-map with `:wrap true` is not supported now, use `fw` macro instead.
+
+> Breaking change since 0.2.x: function wrapper does not extend `IFn` anymore since it brings too much implementation burden for nested wrappers.
