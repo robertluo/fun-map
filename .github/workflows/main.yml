@@ -6,30 +6,33 @@ on:
   push:
   pull_request:
     branches: [ master ]
+  release:
+    types: [published]
 
-# Workaround for clojure action
-env:
-  ACTIONS_ALLOW_UNSECURE_COMMANDS: true
-
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  # This workflow contains a single job called "build"
   build:
-    # The type of runner that the job will run on
     if: "! contains(toJSON(github.event.commits.*.message), '[skip-ci]')"
     runs-on: ubuntu-latest
 
-    # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
-    # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
     - uses: actions/checkout@v3
 
     - uses: DeLaGuardo/setup-clojure@10.1
       with:
         cli: '1.11.1.1208'
+
     - uses: actions/cache@v3
       with:
         path: ~/.m2
         key: default-build
+
     - run: clojure -T:build ci
+    
     - uses: codecov/codecov-action@v3
+
+    - name: deploy
+      if: github.event.release
+      run: clojure -T:build deploy
+      env:
+        CLOJARS_USERNAME: ${{secrets.CLOJARS_USERNAME}}
+        CLOJARS_PASSWORD: ${{secrets.CLOJARS_PASSWORD}}
