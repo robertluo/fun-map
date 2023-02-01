@@ -5,7 +5,7 @@
 (defn project
   "apply project default to `opts`"
   [opts]
-  (let [defaults {:lib     'robertluo/fun-map
+  (let [defaults {:lib     'io.github.robertluo/fun-map
                   :version (format "0.5.%s" (b/git-count-revs nil))
                   :scm     {:url "https://github.com/robertluo/fun-map"}}]
     (merge defaults opts)))

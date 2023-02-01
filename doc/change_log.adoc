@@ -4,6 +4,7 @@
 
  - Change version naming convention from `major.minor.patch` to `major.minor.commit-count`.
  - Support clojurescript
+ - Maven artifact group name changed from `robertluo` to `io.github.robertluo`.
  
 ## 0.4
 
