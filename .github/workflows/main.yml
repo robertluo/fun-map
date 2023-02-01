@@ -1,7 +1,5 @@
 name: CI
 
-# Controls when the action will run. Triggers the workflow on push or pull request
-# events but only for the master branch
 on:
   push:
   pull_request:
@@ -13,9 +11,12 @@ jobs:
   build:
     if: "! contains(toJSON(github.event.commits.*.message), '[skip-ci]')"
     runs-on: ubuntu-latest
+    environment: deploy
 
     steps:
     - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
 
     - uses: DeLaGuardo/setup-clojure@10.1
       with:
