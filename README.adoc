@@ -58,6 +58,10 @@ A fun-map can track the realization order of its values by specifying a `:trace-
 <2> `touch` travels the system, and makes potential lazy values realized, in a real application, you may not want to do it.
 <3> `halt!` is a function that closes a closeable value.
 
+== Example
+
+https://github.com/robertluo/waterfall[Waterfall library] uses `life-cycle-map` to do dependency injection and lifecycle management, turns Kafka usage into map accessing.
+
 == API
 
 The https://cljdoc.xyz/d/robertluo/fun-map/CURRENT[complete API documents] are on cljdocs.
