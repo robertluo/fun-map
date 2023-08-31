@@ -1,9 +1,10 @@
 (ns ^:no-doc robertluo.fun-map.core
   "Where the fun starts."
-  (:import #?(:clj [clojure.lang
-                    IMapEntry
-                    IPersistentMap
-                    ITransientMap])))
+  (:import #?(:cljs nil
+              :default [clojure.lang
+                        IMapEntry
+                        IPersistentMap
+                        ITransientMap])))
 
 #?(:default
 ;;Marker iterface for a funmap
@@ -20,15 +21,15 @@
    (deftype TransientDelegatedMap [^ITransientMap tm fn-entry]
      ITransientMap
      (conj [_ v] (TransientDelegatedMap. (.conj tm v) fn-entry))
-     (#?(:clj persistent
-         :cljr clojure.lang.ITransientMap.persistent)
-       [_]
-       (->DelegatedMap (persistent! tm) fn-entry))
-     ;;ITransientAssociative
-     (#?(:clj assoc
-         :cljr clojure.lang.ITransientMap.assoc)
-       [_ k v]
-       (TransientDelegatedMap. (.assoc tm k v) fn-entry))
+     #?@(:clj [(persistent [_] (->DelegatedMap (persistent! tm) fn-entry))
+               ;;ITransientAssociative
+               (assoc [_ k v] (TransientDelegatedMap. (.assoc tm k v) fn-entry))]
+         :cljr [(clojure.lang.ITransientCollection.persistent
+                 [_]
+                 (->DelegatedMap (persistent! tm) fn-entry))
+                (clojure.lang.ITransientAssociative.assoc
+                 [_ k v]
+                 (TransientDelegatedMap. (.assoc tm k v) fn-entry))])
      ;;ILookup
      (valAt [this k] (.valAt this k nil))
      (valAt
@@ -92,8 +93,6 @@
      clojure.lang.IPersistentMap
      (empty [_]
        (DelegatedMap. (.empty m) fn-entry))
-     (equiv [this other]
-       (.equals this other))
      (containsKey [_ k]
        (.containsKey m k))
      (entryAt [this k]
@@ -103,7 +102,9 @@
        (DelegatedMap. (.assocEx m k v) fn-entry))
      (without [_ k]
        (DelegatedMap. (.without m k) fn-entry))
-     #?@(:clj [(count [_]
+     #?@(:clj [(equiv [this other]
+                 (.equals this other))
+               (count [_]
                  (.count m))
                (cons [_ o]
                  (DelegatedMap.
@@ -148,7 +149,13 @@
                (remove [_ _] (throw (UnsupportedOperationException.)))
                (putAll [_ _] (throw (UnsupportedOperationException.)))
                (clear [_] (throw (UnsupportedOperationException.)))]
-         :cljr [(clojure.lang.IPersistentMap.count
+         :cljr [(equiv
+                 [this other]
+                 (.Equals this other))
+                (clojure.lang.Counted.count
+                 [_]
+                 (.count m))
+                (clojure.lang.IPersistentMap.count
                  [_]
                  (.count m))
                 (clojure.lang.IPersistentMap.cons
