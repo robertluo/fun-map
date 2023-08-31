@@ -185,7 +185,11 @@
                  (when-let [close-fn (some-> this meta ::close-fn)]
                    (close-fn this)))
                 (System.Object.GetHashCode [_] (.GetHashCode ^System.Object m))
-                (System.Object.Equals [this other] (clojure.lang.APersistentMap/mapEquals this other))])
+                (System.Object.Equals [this other] (clojure.lang.APersistentMap/mapEquals this other))
+                System.Collections.IDictionary
+                (get_Count [this] (.count m))
+                (Contains [this k] (.containsKey m k))
+                (get_Item [this k] (.valAt this k))])
      clojure.lang.IEditableCollection
      (asTransient [_]
        (TransientDelegatedMap. (transient m) fn-entry)))
