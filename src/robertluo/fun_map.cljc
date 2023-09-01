@@ -3,8 +3,8 @@
   (:require
    [robertluo.fun-map.core :as core]
    [robertluo.fun-map.wrapper :as wrapper]
-   #?(:clj
-      [robertluo.fun-map.helper :as helper])))
+   #?@(:cljs []
+       :default [[robertluo.fun-map.helper :as helper]])))
 
 (defn fun-map
   "Returns a new fun-map.
@@ -42,7 +42,8 @@
   (fun-map {:a 1 :b 5 :c (wrapper/fun-wrapper (fn [m _] (let [a (get m :a) b (get m :b)] (+ a b))))})
   )
 
-#?(:clj
+#?(:cljs nil
+   :default
    (defmacro fw
      "Returns a FunctionWrapper of an anonymous function defined by body.
 
@@ -73,19 +74,22 @@
      [arg-map & body]
      (helper/make-fw-wrapper `wrapper/fun-wrapper [:trace :cache] arg-map body)))
 
-#?(:clj
+#?(:cljs nil
+   :default
    (defmethod helper/fw-impl :trace
      [{:keys [f options]}]
      `(wrapper/trace-wrapper ~f ~(:trace options))))
 
-#?(:clj
+#?(:cljs nil
+   :default
    (defmethod helper/fw-impl :cache
      [{:keys [f options arg-map]}]
      (let [focus (when-let [focus (:focus options)]
                    `(fn [~arg-map] ~focus))]
        `(wrapper/cache-wrapper ~f ~focus))))
 
-#?(:clj
+#?(:cljs nil
+   :default
    (defmacro fnk
      "A shortcut for `fw` macro. Returns a simple FunctionWrapper which depends on
   `args` key of the fun-map, it will *focus* on the keys also."
@@ -113,6 +117,11 @@
      java.io.Closeable
      (halt! [this]
        (.close this)))
+   :cljr
+   (extend-protocol Haltable
+     System.IDisposable
+     (halt! [this]
+      (.Dispose this)))
    :cljs
    (extend-protocol Haltable
      core/DelegatedMap
@@ -142,9 +151,10 @@
 ;;;;;;;;;;; Utilities
 
 (deftype CloseableValue [value close-fn]
-  #?(:clj clojure.lang.IDeref :cljs IDeref)
-  #?(:clj (deref [_] value)
-     :cljs (-deref [_] value))
+  #?@(:cljs [IDeref
+             (-deref [_] value)]
+      :default [clojure.lang.IDeref
+                (deref [_] value)])
   Haltable
   (halt! [_]
     (close-fn)))
@@ -158,7 +168,8 @@
   [r close-fn]
   (->CloseableValue r close-fn))
 
-#?(:clj
+#?(:cljs nil
+   :default
    (defn lookup
      "Returns a ILookup object for calling f on k"
      [f]

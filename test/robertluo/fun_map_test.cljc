@@ -1,13 +1,13 @@
 (ns robertluo.fun-map-test
   (:require
    [clojure.test :refer [deftest testing is]]
-   #?(:clj
-      [robertluo.fun-map :refer [fun-map? fnk fw fun-map closeable life-cycle-map touch halt! lookup]]
-      :cljs
+   #?(:cljs
       [robertluo.fun-map 
        :as fm
        :refer [fun-map? fun-map touch life-cycle-map closeable halt!]
-       :refer-macros [fw fnk]])))
+       :refer-macros [fw fnk]]
+      :default
+      [robertluo.fun-map :refer [fun-map? fnk fw fun-map closeable life-cycle-map touch halt! lookup]])))
 
 (deftest fun-map-test
   (testing "predict funmap"
@@ -48,7 +48,8 @@
     (is (= 11
            (-> (fun-map {:a 2 :b (fnk [a] (inc a))}) (assoc :a 10) :b)))))
 
-#?(:clj
+#?(:cljs nil
+   :default
    (deftest dref-test
      (testing "delay, future, delayed future value will be deref when accessed"
        (is (= {:a 3 :b 4 :c 5}
@@ -110,6 +111,7 @@
                          {:a (fnk [] (closeable 3 #(swap! marker inc)))}))]
       (is (= {:a 3} m))
       #?(:cljs (halt! m)
+         :cljr (.Dispose m)
          :clj (.close m))
       (is (= 1 @marker)))))
 
@@ -139,19 +141,23 @@
       (is (= 1 (:a m)))
       (is (= 2 (:a m))))))
 
-#?(:clj
+#?(:cljs nil
+   :default
    (deftest parallel-execution-test
      (let [a (atom 5)
-           m (fun-map {:a (delay (Thread/sleep 200) @a)
-                       :b (delay (Thread/sleep 200) 20)
-                       :z (delay (Thread/sleep 100) (reset! a 10))
+           sleep #?(:clj #(Thread/sleep %)
+                    :cljr #(System.Threading.Thread/Sleep %))
+           m (fun-map {:a (delay (sleep 200) @a)
+                       :b (delay (sleep 200) 20)
+                       :z (delay (sleep 100) (reset! a 10))
                        :c (fw {:keys [_ b z] :par? true} (* z b))})]
        (is (= 200 (:c m))))))
 
 (deftest idempotent-test
   (is (= {} (merge (fun-map (fun-map {})) {}))))
 
-#?(:clj
+#?(:cljs nil
+   :default
    (deftest lookup-test
      (is (= 3 (get (lookup identity) 3)))
      (is (= [:foo :foo] (find (lookup identity) :foo)))))

@@ -268,9 +268,15 @@
                  (DelegatedMap.
                   (.cons m (if (instance? IFunMap o) (.rawSeq ^IFunMap o) o))
                   fn-entry))
+                (clojure.lang.IPersistentCollection.cons
+                 [this o]
+                 (.cons ^IPersistentMap this o))
                 (clojure.lang.IPersistentMap.assoc
                  [_ k v]
                  (DelegatedMap. (.assoc m k v) fn-entry))
+                (clojure.lang.Associative.assoc
+                 [this k v]
+                 (.assoc ^IPersistentMap this k v))
                 (seq
                  [this]
                  (clojure.lang.EnumeratorSeq/create (.GetEnumerator ^System.Collections.IEnumerable this)))
