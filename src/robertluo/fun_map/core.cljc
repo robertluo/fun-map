@@ -257,9 +257,6 @@
          :cljr [(equiv
                  [this other]
                  (.Equals this other))
-                (clojure.lang.Counted.count
-                 [_]
-                 (.count m))
                 (clojure.lang.IPersistentMap.count
                  [_]
                  (.count m))
@@ -268,18 +265,25 @@
                  (DelegatedMap.
                   (.cons m (if (instance? IFunMap o) (.rawSeq ^IFunMap o) o))
                   fn-entry))
-                (clojure.lang.IPersistentCollection.cons
-                 [this o]
-                 (.cons ^IPersistentMap this o))
                 (clojure.lang.IPersistentMap.assoc
                  [_ k v]
                  (DelegatedMap. (.assoc m k v) fn-entry))
-                (clojure.lang.Associative.assoc
-                 [this k v]
-                 (.assoc ^IPersistentMap this k v))
                 (seq
                  [this]
                  (clojure.lang.EnumeratorSeq/create (.GetEnumerator ^System.Collections.IEnumerable this)))
+                clojure.lang.Counted
+                (clojure.lang.Counted.count
+                 [_]
+                 (.count m))
+                clojure.lang.IPersistentCollection
+                (clojure.lang.IPersistentCollection.cons
+                 [this o]
+                 (.cons ^IPersistentMap this o))
+                clojure.lang.Associative
+                (clojure.lang.Associative.assoc
+                 [this k v]
+                 (.assoc ^IPersistentMap this k v))
+                System.Collections.IEnumerable
                 (System.Collections.IEnumerable.GetEnumerator
                  [this]
                  (let [ite (.GetEnumerator ^System.Collections.IEnumerable m)]
