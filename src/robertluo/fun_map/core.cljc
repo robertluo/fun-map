@@ -302,7 +302,7 @@
                 (System.Object.GetHashCode [_] (.GetHashCode ^System.Object m))
                 (System.Object.Equals [this other] (clojure.lang.APersistentMap/mapEquals this other))
                 System.Collections.IDictionary
-                (get_Count [this] (.count m))
+                (get_Count [this] (.get_Count ^System.Collections.IDictionary m))
                 (Contains [this k] (.containsKey m k))
                 (get_Item [this k] (.valAt this k))])))
 
