@@ -1,7 +1,6 @@
 (ns robertluo.fun-map.helper
   "Helpers for writing wrappers"
-  (:require
-   #?(:clj [robertluo.fun-map.util :as util])))
+   #?(:clj (:require [robertluo.fun-map.util :as util])))
 
 #?(:clj
    (defn let-form
@@ -18,7 +17,7 @@
               vec)]
         [`let bindings])
       [`let bindings]))
-   :cljs
+   :default
    (defn let-form
      [_ bindings]
      [`let bindings]))
