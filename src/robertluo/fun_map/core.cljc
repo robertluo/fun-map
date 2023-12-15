@@ -86,6 +86,9 @@
        (.meta ^clojure.lang.IObj m))
      (withMeta [_ mdata]
        (DelegatedMap. (with-meta m mdata) fn-entry))
+     clojure.lang.IFn
+     (invoke [this k] (.valAt this k))
+     (invoke [this k not-found] (.valAt this k not-found))
      clojure.lang.ILookup
      (valAt [this k]
        (some-> ^IMapEntry (.entryAt this k) (.val)))
@@ -173,6 +176,10 @@
       [this k]
       (when (-contains-key? m k)
         (fn-entry this (-find m k))))
+     
+     IFn
+     (invoke [this k] (-lookup this k))
+     (invoke [this k not-found] (-lookup this k not-found))
 
      ILookup
      (-lookup
