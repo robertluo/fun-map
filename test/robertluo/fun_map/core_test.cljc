@@ -11,7 +11,9 @@
       (is (= 4 (get m :b)))
       (is (= 2 (count m)))
       (is (= {:a 2 :b 4} m))
-      (is (= m {:a 2 :b 4})))))
+      (is (= m {:a 2 :b 4}))
+      (is (= 2 (m :a)))
+      (is (= ::not-found (m :c ::not-found))))))
 
 (deftest transient-test
   (letfn [(wrap-m [m f] (-> m (sut/delegate-map (fn [_ [k v]] [k (* 2 v)])) transient f persistent!))]
