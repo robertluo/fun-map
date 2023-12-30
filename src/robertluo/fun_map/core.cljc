@@ -179,8 +179,8 @@
         (fn-entry this (-find m k))))
      
      IFn
-     (invoke [this k] (-lookup this k))
-     (invoke [this k not-found] (-lookup this k not-found))
+     (-invoke [this k] (-lookup this k))
+     (-invoke [this k not-found] (-lookup this k not-found))
 
      ILookup
      (-lookup
