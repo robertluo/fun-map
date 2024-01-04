@@ -3,7 +3,8 @@
   (:import #?(:clj [clojure.lang
                     IMapEntry
                     IPersistentMap
-                    ITransientMap])))
+                    ITransientMap
+                    ATransientMap])))
 
 #?(:clj
 ;;Marker iterface for a funmap
@@ -17,7 +18,7 @@
 
 ;;Support transient
 #?(:clj
-   (deftype TransientDelegatedMap [^ITransientMap tm fn-entry]
+   (deftype TransientDelegatedMap [^ATransientMap tm fn-entry]
      ITransientMap
      (conj [_ v] (TransientDelegatedMap. (.conj tm v) fn-entry))
      (persistent [_] (->DelegatedMap (persistent! tm) fn-entry))
@@ -178,8 +179,8 @@
         (fn-entry this (-find m k))))
      
      IFn
-     (invoke [this k] (-lookup this k))
-     (invoke [this k not-found] (-lookup this k not-found))
+     (-invoke [this k] (-lookup this k))
+     (-invoke [this k not-found] (-lookup this k not-found))
 
      ILookup
      (-lookup
