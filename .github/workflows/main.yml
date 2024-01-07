@@ -20,7 +20,7 @@ jobs:
 
     - uses: DeLaGuardo/setup-clojure@10.1
       with:
-        cli: '1.11.1.1208'
+        cli: '1.11.1.1435'
 
     - uses: actions/cache@v3
       with:
@@ -28,7 +28,7 @@ jobs:
         key: default-build
 
     - run: clojure -T:build ci
-    
+
     - uses: codecov/codecov-action@v3
 
     - name: deploy
