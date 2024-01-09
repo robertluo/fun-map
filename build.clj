@@ -7,7 +7,11 @@
   [opts]
   (let [defaults {:lib     'io.github.robertluo/fun-map
                   :version (format "0.5.%s" (b/git-count-revs nil))
-                  :scm     {:url "https://github.com/robertluo/fun-map"}}]
+                  :scm     {:url "https://github.com/robertluo/fun-map"}
+                  :pom-data [[:licenses
+                              [:license
+                               [:name "Eclipse Public License 1.0"]
+                               [:url "https://opensource.org/license/epl-1-0/"]]]]}]
     (merge defaults opts)))
 
 (defn tests
