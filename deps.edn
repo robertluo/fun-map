@@ -12,7 +12,6 @@
             :extra-deps  {olical/cljs-test-runner {:mvn/version "3.8.0"}}
             :main-opts   ["-m" "cljs-test-runner.main"]}
            :build    ;customized building process running. e.g. clj -T:build ci
-           {:deps       {io.github.seancorfield/build-clj {:git/tag "v0.9.2"
-                                                           :git/sha "9c9f078"}}
+           {:deps       {io.github.robertluo/build-clj {:git/sha "5d45f58cc20747c136bb320c9b13d65d2bf4cf58"}}
             :ns-default build}  
            :clj-kondo {:extra-deps {clj-kondo/clj-kondo {:mvn/version "2023.12.15"}}}}}
