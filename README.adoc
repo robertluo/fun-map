@@ -3,9 +3,9 @@
 
 image:https://github.com/robertluo/fun-map/actions/workflows/main.yml/badge.svg[CI,link=https://github.com/robertluo/fun-map/actions/workflows/main.yml]
 image:https://img.shields.io/clojars/v/io.github.robertluo/fun-map.svg[Clojars Project,link=https://clojars.org/io.github.robertluo/fun-map]
-image:https://cljdoc.xyz/badge/io.github.robertluo/fun-map[cljdoc,link=https://cljdoc.xyz/d/io.github.robertluo/fun-map/CURRENT]
+https://cljdoc.org/d/io.github.robertluo/fun-map[image:https://cljdoc.org/badge/io.github.robertluo/fun-map[cljdoc badge]]
 
-Fun-map is a Clojure(Script) map data structure. The difference between it and a normal map is: the values are evaluated until you take the value of it.
+Fun-map is a Clojure(Script) map data structure. The difference between it and a normal map is that the values are evaluated until you take their value.
 
 == Usage scenarios
 
