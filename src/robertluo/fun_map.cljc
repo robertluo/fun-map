@@ -91,9 +91,14 @@
   `args` key of the fun-map, it will *focus* on the keys also."
      {:style/indent 1}
      [args & body]
-     `(fw {:keys  ~args
-           :focus ~args}
-          ~@body)))
+     (let [focus (mapv (comp symbol name) args)]
+       `(fw {:keys  ~args
+             :focus ~focus}
+          ~@body))))
+
+(comment
+  (macroexpand-1 '(fnk [a :ns/b] (+ a b)))
+  )
 
 ;;;;;; life cycle map
 
