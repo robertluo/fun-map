@@ -1,6 +1,6 @@
 (ns robertluo.fun-map-test
   (:require
-   [clojure.test :refer [deftest testing is]]
+   [clojure.test :refer [deftest testing is are]]
    #?(:clj
       [robertluo.fun-map :refer [fun-map? fnk fw fun-map closeable life-cycle-map touch halt! lookup]]
       :cljs
@@ -155,3 +155,10 @@
    (deftest lookup-test
      (is (= 3 (get (lookup identity) 3)))
      (is (= [:foo :foo] (find (lookup identity) :foo)))))
+
+(deftest fnk-focus-test
+  "testing fnk focus using right symbol (without ns)"
+  (let [m (fun-map {:a (fnk [:ns/b] b)})]
+    (are [v exp] (= exp (-> m (assoc :ns/b v) :a))
+      2 2
+      3 3)))
