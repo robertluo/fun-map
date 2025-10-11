@@ -156,7 +156,7 @@
      (is (= 3 (get (lookup identity) 3)))
      (is (= [:foo :foo] (find (lookup identity) :foo)))))
 
-(deftest fnk-focus-test
+(deftest fnk-focus-symbol-test
   "testing fnk focus using right symbol (without ns)"
   (let [m (fun-map {:a (fnk [:ns/b] b)})]
     (are [v exp] (= exp (-> m (assoc :ns/b v) :a))
