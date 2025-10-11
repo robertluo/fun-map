@@ -9,7 +9,7 @@
             :main-opts  ["-m" "kaocha.runner"]}
            :cljs-test
            {:extra-paths ["test"]
-            :extra-deps  {olical/cljs-test-runner {:mvn/version "3.8.1"}}
+            :extra-deps  {olical/cljs-test-runner {:mvn/version "3.8.0"}}
             :main-opts   ["-m" "cljs-test-runner.main"]}
            :build    ;customized building process running. e.g. clj -T:build ci
            {:deps       {io.github.robertluo/build-clj {:git/sha "5d45f58cc20747c136bb320c9b13d65d2bf4cf58"}}
