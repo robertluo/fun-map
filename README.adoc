@@ -64,7 +64,7 @@ https://github.com/robertluo/waterfall[Waterfall library] uses `life-cycle-map` 
 
 == API
 
-The https://cljdoc.xyz/d/robertluo/fun-map/CURRENT[complete API documents] are on cljdocs.
+The https://cljdoc.org/d/robertluo/fun-map/CURRENT[complete API documents] are on cljdocs.
 
 Some of the most frequently used APIs are:
 
