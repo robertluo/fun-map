@@ -90,9 +90,10 @@ Some of the most frequently used APIs are:
 <2> by `assoc` key-value pairs to a fun-map, you turn Datomic API into a map.
 
 == Further read
- - xref:doc/rational.adoc[Rational]
+ - xref:doc/rationale.adoc[Rationale]
  - xref:doc/change_log.adoc[Changes]
  - xref:doc/concepts.adoc[Concepts]
+ - xref:doc/improvements.adoc[Planned Improvements]
 
 == Development
 

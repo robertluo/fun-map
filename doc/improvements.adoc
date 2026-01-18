@@ -1,0 +1,174 @@
+= Improvement Ideas
+:toc:
+
+This document records potential improvements identified through REPL exploration and API review.
+
+== 1. Better Error Messages
+
+*Priority:* High
+
+*Problem:*
+Missing keys produce cryptic errors:
+[source]
+----
+NullPointerException: Cannot invoke "Object.getClass()" because "x" is null
+----
+
+Circular dependencies cause `StackOverflowError` with no indication of the cycle.
+
+*Examples:*
+[source,clojure]
+----
+(def m (fun-map {:a (fnk [missing-key] (inc missing-key))}))
+(:a m) ;=> NullPointerException
+
+(def m (fun-map {:a (fnk [b] b) :b (fnk [a] a)}))
+(:a m) ;=> StackOverflowError
+----
+
+*Suggestion:*
+
+- Detect missing dependencies and throw `ex-info` with `:missing-key` and `:dependent-key`
+- Track access stack to detect and report circular dependencies with the cycle path
+
+== 2. Plain Maps Inside Fun-Maps Don't Unwrap
+
+*Priority:* Low (documentation)
+
+*Problem:*
+Only fun-maps unwrap their values. Plain maps nested inside a fun-map do not unwrap:
+
+[source,clojure]
+----
+(def m (fun-map {:a {:b (delay 42)}}))  ; {:b ...} is a plain map
+(:b (:a m)) ;=> #object[clojure.lang.Delay ...]  ; not 42
+
+;; With nested fun-map, it works:
+(def m (fun-map {:a (fun-map {:b (delay 42)})}))
+(get-in m [:a :b]) ;=> 42
+----
+
+*Status:* Documented in concepts.adoc. This is expected behavior, not a bug.
+
+== 3. Iteration Triggers All Computations
+
+*Priority:* Low (documentation)
+
+*Problem:*
+Iterating a fun-map (including `keys`, `vals`, `seq`, `reduce-kv`) triggers all computations. Side effects interleave with output:
+
+[source,clojure]
+----
+(def m (fun-map {:a 1 :b (fnk [a] (println "computing") (* a 2))}))
+(keys m)
+;; prints: (:a computing
+;;          :b)
+----
+
+*Suggestion:*
+Document that iteration realizes all values. This is expected but may surprise users.
+
+== 4. `select-keys` and `into` Lose Fun-Map Semantics
+
+*Priority:* Low
+
+*Problem:*
+Standard Clojure functions return plain maps:
+
+[source,clojure]
+----
+(def m (fun-map {:a 1 :b (fnk [a] (* a 2))}))
+(type (select-keys m [:a :b])) ;=> clojure.lang.PersistentArrayMap
+(type (into {} m))             ;=> clojure.lang.PersistentArrayMap
+----
+
+*Suggestion:*
+Document as expected behavior (values are realized during iteration). Optionally provide `select-keys*` that preserves wrappers for advanced use cases.
+
+== 5. `:keep-ref` Interaction with `fnk` Is Confusing
+
+*Priority:* Medium
+
+*Problem:*
+With `:keep-ref true`, `fnk` receives the atom itself, not the dereferenced value. But `fnk` auto-generates focus on the *binding* (the atom), not its contents.
+
+[source,clojure]
+----
+(def state (atom [1 2 3]))
+(def m (fun-map {:nums state
+                 :count (fnk [nums] (count nums))}  ; nums is atom, not vector!
+                :keep-ref true))
+(:count m) ;=> UnsupportedOperationException: count not supported on Atom
+----
+
+The correct pattern requires explicit `fw` with `@` in focus:
+[source,clojure]
+----
+(fw {:keys [nums] :focus @nums}
+  (count @nums))
+----
+
+*Suggestion:*
+
+- Document this interaction explicitly in the API docs
+- Consider a `:deref-focus` option for `fnk` that focuses on `@binding` instead of `binding`
+
+== 6. Documentation: Missing "Gotchas" Section
+
+*Priority:* High
+
+*Problem:*
+Several behaviors are surprising to new users:
+
+1. `update` on a computed key replaces the `fnk` with the computed+updated value
+2. Printing a fun-map with unrealized values shows `<<unrealized>>`
+3. `dissoc` a dependency breaks dependent `fnk`s silently until accessed
+
+*Examples:*
+[source,clojure]
+----
+;; update replaces fnk
+(def m (fun-map {:a 1 :b (fnk [a] (* a 2))}))
+(def m2 (update m :b inc))
+(:b m2) ;=> 3  ; fnk is gone, now just the value 3
+
+;; dissoc breaks silently
+(def m (fun-map {:a 1 :b (fnk [a] (* a 2))}))
+(def m2 (dissoc m :a))
+(:b m2) ;=> NullPointerException (only when accessed)
+----
+
+*Suggestion:*
+Add a "Gotchas" or "Common Pitfalls" section to README or concepts.adoc.
+
+== 7. `closeable` Could Support `with-open`
+
+*Priority:* Low
+
+*Problem:*
+`CloseableValue` implements `Haltable` but not `java.io.Closeable`, so it doesn't work with Clojure's `with-open`.
+
+[source,clojure]
+----
+(with-open [r (closeable (create-resource) #(cleanup))]
+  (use-resource @r))
+;; Error: closeable doesn't implement Closeable
+----
+
+*Suggestion:*
+Extend `CloseableValue` to implement `java.io.Closeable` in CLJ for better interop. The `close` method would delegate to `halt!`.
+
+== Implementation Status
+
+[cols="1,3,1"]
+|===
+|ID |Description |Status
+
+|1 |Better error messages |DONE
+|2 |Document `get-in` limitation |DONE
+|3 |Document iteration behavior |DONE
+|4 |Document `select-keys`/`into` behavior |DONE
+|5 |Document `:keep-ref` + `fnk` interaction |DONE
+|6 |Add gotchas section |DONE
+|7 |`Closeable` support for `closeable` |DONE
+|===

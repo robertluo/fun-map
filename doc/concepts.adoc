@@ -121,3 +121,108 @@ With manifold's excellent `let-flow` macro and its `future` function, if you hav
 (time (:c m)) ;=> 600 in approx. 3000msec instead of 6000
 ----
 
+## Gotchas and Common Pitfalls
+
+This section covers behaviors that may surprise new users.
+
+### Plain maps inside fun-maps don't unwrap
+
+Only fun-maps unwrap their values. If you nest a plain map inside a fun-map, values in that plain map are not unwrapped:
+
+[source,clojure]
+----
+;; Plain map nested inside fun-map - delays NOT unwrapped
+(def m (fun-map {:a {:b (delay 42)}}))  ; {:b ...} is a plain map
+(:b (:a m)) ;=> #object[clojure.lang.Delay ...]
+
+;; Nested fun-map - delays ARE unwrapped
+(def m (fun-map {:a (fun-map {:b (delay 42)})}))  ; inner is also a fun-map
+(:b (:a m)) ;=> 42
+(get-in m [:a :b]) ;=> 42  ; get-in works too
+----
+
+### Iteration realizes all values
+
+Iterating a fun-map (`keys`, `vals`, `seq`, `reduce-kv`, etc.) triggers computation of all values:
+
+[source,clojure]
+----
+(def m (fun-map {:a 1 :b (fnk [a] (println "computing b") (* a 2))}))
+(keys m)  ; prints "computing b" even though you only asked for keys!
+----
+
+This is because iteration must produce key-value pairs, which requires unwrapping.
+
+### `select-keys` and `into` return plain maps
+
+Standard Clojure functions return plain maps, losing fun-map semantics:
+
+[source,clojure]
+----
+(def m (fun-map {:a 1 :b (fnk [a] (* a 2))}))
+(type (select-keys m [:a :b])) ;=> clojure.lang.PersistentArrayMap
+(type (into {} m))             ;=> clojure.lang.PersistentArrayMap
+----
+
+Values are realized during iteration, so the result contains computed values, not wrappers.
+
+### `update` on computed keys replaces the fnk
+
+Using `update` on a key with an `fnk` value realizes the value and replaces the wrapper:
+
+[source,clojure]
+----
+(def m (fun-map {:a 1 :b (fnk [a] (* a 2))}))
+(def m2 (update m :b inc))
+(:b m2) ;=> 3 (not a function of :a anymore!)
+
+;; The fnk was replaced with the literal value 3
+(def m3 (assoc m2 :a 100))
+(:b m3) ;=> 3 (unchanged, no longer depends on :a)
+----
+
+### `dissoc` silently breaks dependencies
+
+Removing a key that other `fnk`s depend on doesn't fail until access:
+
+[source,clojure]
+----
+(def m (fun-map {:a 1 :b (fnk [a] (* a 2))}))
+(def m2 (dissoc m :a))
+m2 ;=> looks fine: {:b <<unrealized>>}
+(:b m2) ;=> Error! :a is missing
+----
+
+### `:keep-ref` + `fnk` requires careful handling
+
+With `:keep-ref true`, `fnk` receives the ref itself, not its value:
+
+[source,clojure]
+----
+(def state (atom [1 2 3]))
+(def m (fun-map {:nums state
+                 :count (fnk [nums] (count nums))}  ; nums is the atom!
+                :keep-ref true))
+(:count m) ;=> Error: count not supported on Atom
+
+;; Correct: use fw with explicit deref
+(def m (fun-map {:nums state
+                 :count (fw {:keys [nums] :focus @nums}
+                          (count @nums))}
+                :keep-ref true))
+----
+
+### Printing shows wrapper state
+
+Printing a fun-map shows raw wrapper state, not computed values:
+
+[source,clojure]
+----
+(def m (fun-map {:a 1 :b (fnk [a] (* a 2))}))
+(println m)   ;=> {:a 1, :b <<unrealized>>}
+(:b m)        ;=> 2
+(println m)   ;=> {:a 1, :b <<2>>}
+----
+
+The `<<...>>` notation indicates wrapper values. `<<unrealized>>` means not yet computed.
+
