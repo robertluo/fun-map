@@ -45,8 +45,10 @@
        (keys m))
      :cljs
      ;; In CLJS we can't easily reference core without circular dep,
-     ;; and this is only used for error context, so just use keys
-     (keys m)))
+     ;; and this is only used for error context, so just use keys on underlying map
+     (if-let [raw-seq-fn (some-> m meta ::-raw-seq-fn)]
+       (map first (raw-seq-fn))
+       (keys m))))
 
 (defn- wrap-fn-error
   "Wraps exceptions from function wrapper with context about key and access path."

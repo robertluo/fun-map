@@ -1,29 +1,35 @@
 = Improvement Ideas
 :toc:
 
-This document records improvements identified through REPL exploration and API review.
+This document records potential improvements identified through REPL exploration and API review.
 
-== 1. Better Error Messages ✓
+== 1. Better Error Messages
 
-*Status:* DONE
+*Priority:* High
 
-*Original problem:*
-Missing keys produced cryptic `NullPointerException`. Circular dependencies caused `StackOverflowError` with no indication of the cycle.
+*Problem:*
+Missing keys produce cryptic errors:
+[source]
+----
+NullPointerException: Cannot invoke "Object.getClass()" because "x" is null
+----
 
-*Solution implemented:*
+Circular dependencies cause `StackOverflowError` with no indication of the cycle.
 
-- Added `*unwrap-stack*` dynamic var to track keys being unwrapped
-- Circular dependencies now throw `ex-info` with `:type :circular-dependency` and full cycle path
-- Function wrapper errors now include context: key being computed, available keys, dependency chain
-
-*Example of new behavior:*
+*Examples:*
 [source,clojure]
 ----
+(def m (fun-map {:a (fnk [missing-key] (inc missing-key))}))
+(:a m) ;=> NullPointerException
+
 (def m (fun-map {:a (fnk [b] b) :b (fnk [a] a)}))
-(:a m)
-;=> ExceptionInfo: Circular dependency detected: :a -> :b -> :a
-;   {:type :circular-dependency, :key :a, :cycle [:a :b :a]}
+(:a m) ;=> StackOverflowError
 ----
+
+*Suggestion:*
+
+- Detect missing dependencies and throw `ex-info` with `:missing-key` and `:dependent-key`
+- Track access stack to detect and report circular dependencies with the cycle path
 
 == 2. Plain Maps Inside Fun-Maps Don't Unwrap
 
@@ -107,82 +113,50 @@ The correct pattern requires explicit `fw` with `@` in focus:
 - Document this interaction explicitly in the API docs
 - Consider a `:deref-focus` option for `fnk` that focuses on `@binding` instead of `binding`
 
-== 6. Documentation: Missing "Gotchas" Section ✓
+== 6. Documentation: Missing "Gotchas" Section
 
-*Status:* DONE
+*Priority:* High
 
-*Solution:* Added comprehensive "Gotchas and Common Pitfalls" section to `doc/concepts.adoc` covering:
+*Problem:*
+Several behaviors are surprising to new users:
 
-- Plain maps inside fun-maps don't unwrap
-- Iteration realizes all values
-- `select-keys` and `into` return plain maps
-- `update` on computed keys replaces the fnk
-- `dissoc` silently breaks dependencies
-- `:keep-ref` + `fnk` interaction
-- Printing shows wrapper state
+1. `update` on a computed key replaces the `fnk` with the computed+updated value
+2. Printing a fun-map with unrealized values shows `<<unrealized>>`
+3. `dissoc` a dependency breaks dependent `fnk`s silently until accessed
 
-== 7. `closeable` Could Support `with-open` ✓
+*Examples:*
+[source,clojure]
+----
+;; update replaces fnk
+(def m (fun-map {:a 1 :b (fnk [a] (* a 2))}))
+(def m2 (update m :b inc))
+(:b m2) ;=> 3  ; fnk is gone, now just the value 3
 
-*Status:* DONE
+;; dissoc breaks silently
+(def m (fun-map {:a 1 :b (fnk [a] (* a 2))}))
+(def m2 (dissoc m :a))
+(:b m2) ;=> NullPointerException (only when accessed)
+----
 
-*Solution:* `CloseableValue` now implements `java.io.Closeable` in CLJ. Works with `with-open`:
+*Suggestion:*
+Add a "Gotchas" or "Common Pitfalls" section to README or concepts.adoc.
+
+== 7. `closeable` Could Support `with-open`
+
+*Priority:* Low
+
+*Problem:*
+`CloseableValue` implements `Haltable` but not `java.io.Closeable`, so it doesn't work with Clojure's `with-open`.
 
 [source,clojure]
 ----
 (with-open [r (closeable (create-resource) #(cleanup))]
-  (use-resource @r))  ; works!
+  (use-resource @r))
+;; Error: closeable doesn't implement Closeable
 ----
 
-== 8. core.cljc Improvements ✓
-
-*Status:* DONE
-
-Several issues were identified and fixed in `core.cljc`:
-
-=== Fixed: `valAt` nil/false handling (High priority)
-
-Both CLJ and CLJS `valAt`/`-lookup` with `not-found` incorrectly returned `not-found` when the computed value was `nil` or `false`.
-
-*Solution:* Changed from `(or ... not-found)` to `(if-let [entry ...] (val entry) not-found)`.
-
-=== Added: `IKVReduce` implementation (Low priority)
-
-`reduce-kv` now uses native implementation instead of falling back to seq-based reduction.
-
-=== Added: CLJS `TransientDelegatedMap` `ILookup` (Low priority)
-
-CLJS transient fun-maps now support lookups during transient operations.
-
-=== Documented: Hash/equals gotchas
-
-- Equality comparison realizes all values
-- Hash codes use underlying map (wrappers), not realized values
-
-See `doc/concepts.adoc` for details.
-
-== 9. wrapper.cljc Improvements ✓
-
-*Status:* DONE
-
-=== Fixed: `-unwrap` returned exception instead of throwing (Medium priority)
-
-The `Object` and `nil` implementations of `-unwrap` returned an `ex-info` object instead of throwing it. Now properly throws if these code paths are ever hit (which indicates a bug).
-
-=== Fixed: `CachedWrapper` race condition (Medium priority)
-
-Moved focus-fn evaluation and staleness check inside `swap!` to avoid race condition where multiple threads could redundantly recompute cached values.
-
-=== Added: `TracedWrapper` print method (Low priority)
-
-Added `print-method` for `TracedWrapper` for consistency with `FunctionWrapper` and `CachedWrapper`.
-
-=== Cleanup: Removed dead CLJS code (Low priority)
-
-Removed unreachable `::-raw-seq-fn` metadata check in `raw-keys` CLJS branch.
-
-=== Cleanup: Standardized docstrings (Low priority)
-
-Standardized docstring style across `fun-wrapper`, `cache-wrapper`, and `trace-wrapper`.
+*Suggestion:*
+Extend `CloseableValue` to implement `java.io.Closeable` in CLJ for better interop. The `close` method would delegate to `halt!`.
 
 == Implementation Status
 
@@ -197,6 +171,4 @@ Standardized docstring style across `fun-wrapper`, `cache-wrapper`, and `trace-w
 |5 |Document `:keep-ref` + `fnk` interaction |DONE
 |6 |Add gotchas section |DONE
 |7 |`Closeable` support for `closeable` |DONE
-|8 |core.cljc improvements |DONE
-|9 |wrapper.cljc improvements |DONE
 |===
