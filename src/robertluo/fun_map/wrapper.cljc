@@ -20,11 +20,14 @@
      Object
      (-wrapped? [_ _] false)
      (-unwrap [this _ k]
-       (ex-info "Unwrap a common value" {:key k :value this}))
+       ;; This should never be called since -wrapped? returns false.
+       ;; If it is called, it indicates a bug in the unwrapping logic.
+       (throw (ex-info "Bug: attempted to unwrap a non-wrapper value"
+                       {:key k :value this :type (type this)})))
      nil
      (-wrapped? [_ _] false)
      (-unwrap [_ _ k]
-       (ex-info "Unwrap a nil" {:key k}))
+       (throw (ex-info "Bug: attempted to unwrap nil" {:key k})))
      clojure.lang.IDeref
      (-wrapped? [_ m]
        (not (some-> m meta ::keep-ref)))
@@ -90,7 +93,7 @@
   )
 
 (def fun-wrapper
-  "construct a new FunctionWrapper"
+  "Constructs a new FunctionWrapper."
   ->FunctionWrapper)
 
 (defn- check-cycle!
@@ -134,11 +137,17 @@
   ValueWrapper
   (-wrapped? [_ _] true)
   (-unwrap [_ m k]
-    (let [[val focus-val] @a-val-pair
-          new-focus-val (if focus-fn (focus-fn m) ::unrealized)]
-      (if (or (= ::unrealized val) (not= new-focus-val focus-val))
-        (first (swap! a-val-pair (fn [_] [(-unwrap wrapped m k) new-focus-val])))
-        val)))
+    ;; Use swap! properly to avoid race condition where multiple threads
+    ;; could redundantly recompute the value.
+    ;; Note: focus-fn must be pure since it may be called multiple times
+    ;; during contention.
+    (first
+      (swap! a-val-pair
+        (fn [[val focus-val]]
+          (let [new-focus-val (if focus-fn (focus-fn m) ::unrealized)]
+            (if (or (= ::unrealized val) (not= new-focus-val focus-val))
+              [(-unwrap wrapped m k) new-focus-val]
+              [val focus-val]))))))
   #?@(:cljs
       [IPrintWithWriter
        (-pr-writer
@@ -150,7 +159,7 @@
                      ">>")))]))
 
 (defn cache-wrapper
-  "construct a CachedWrapper"
+  "Constructs a CachedWrapper."
   [wrapped focus]
   (CachedWrapper. wrapped (atom [::unrealized ::unrealized]) focus))
 
@@ -164,7 +173,7 @@
       v)))
 
 (def trace-wrapper
-  "constructs a TraceWrapper"
+  "Constructs a TracedWrapper."
   ->TracedWrapper)
 
 ;; Fine print the wrappers
@@ -178,4 +187,7 @@
                (str "<<"
                     (let [v (-> (.a_val_pair o) deref first)]
                       (if (= ::unrealized v) "unrealized" v))
-                    ">>")))))
+                    ">>")))
+
+     (defmethod print-method TracedWrapper [^TracedWrapper o ^java.io.Writer wtr]
+       (.write wtr (str "<<traced:" (.wrapped o) ">>")))))

@@ -15,6 +15,18 @@
       (is (= 2 (m :a)))
       (is (= ::not-found (m :c ::not-found))))))
 
+(deftest nil-and-false-value-test
+  (testing "nil values are returned correctly with not-found"
+    (let [m (sut/delegate-map {:a nil :b 1} (fn [_ [k v]] [k v]))]
+      (is (nil? (get m :a)))
+      (is (nil? (get m :a :not-found))) ; should return nil, not :not-found
+      (is (= :not-found (get m :missing :not-found)))))
+  (testing "false values are returned correctly with not-found"
+    (let [m (sut/delegate-map {:a false :b true} (fn [_ [k v]] [k v]))]
+      (is (false? (get m :a)))
+      (is (false? (get m :a :not-found))) ; should return false, not :not-found
+      (is (= :not-found (get m :missing :not-found))))))
+
 (deftest transient-test
   (letfn [(wrap-m [m f] (-> m (sut/delegate-map (fn [_ [k v]] [k (* 2 v)])) transient f persistent!))]
     (is (= {} (wrap-m {} identity)))
