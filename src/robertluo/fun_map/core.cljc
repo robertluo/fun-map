@@ -7,7 +7,7 @@
                     ATransientMap])))
 
 #?(:clj
-;;Marker iterface for a funmap
+;; Marker interface for a funmap
    (definterface IFunMap
      (rawSeq []))
    :cljs
@@ -59,7 +59,18 @@
       (->DelegatedMap (-persistent! tm) fn-entry))
      (-conj!
       [_ pair]
-      (TransientDelegatedMap. (-conj! tm pair) fn-entry))))
+      (TransientDelegatedMap. (-conj! tm pair) fn-entry))
+
+     ILookup
+     (-lookup
+      [this k]
+      (-lookup this k nil))
+     (-lookup
+      [this k not-found]
+      (if-let [entry (when (-contains-key? tm k)
+                       (fn-entry this (-find tm k)))]
+        (val entry)
+        not-found))))
 
 #?(:clj
 ;; DelegatedMap takes a map `m` and delegates most feature to it.
@@ -90,13 +101,13 @@
      clojure.lang.IFn
      (invoke [this k] (.valAt this k))
      (invoke [this k not-found] (.valAt this k not-found))
-     clojure.lang.ILookup
-     (valAt [this k]
-       (some-> ^IMapEntry (.entryAt this k) (.val)))
-     (valAt [this k not-found]
-       (if (.containsKey this k)
-         (.valAt this k)
-         not-found))
+    clojure.lang.ILookup
+    (valAt [this k]
+      (some-> ^IMapEntry (.entryAt this k) (.val)))
+    (valAt [this k not-found]
+      (if-let [entry (.entryAt this k)]
+        (.val ^IMapEntry entry)
+        not-found))
      clojure.lang.IPersistentMap
      (count [_]
        (.count m))
@@ -148,6 +159,10 @@
      (putAll [_ _] (throw (UnsupportedOperationException.)))
      (clear [_] (throw (UnsupportedOperationException.)))
 
+     clojure.lang.IKVReduce
+     (kvreduce [this f init]
+       (reduce-kv (fn [acc k _] (f acc k (.valAt this k))) init m))
+
      clojure.lang.IEditableCollection
      (asTransient [_]
        (TransientDelegatedMap. (transient m) fn-entry)))
@@ -182,13 +197,15 @@
      (-invoke [this k] (-lookup this k))
      (-invoke [this k not-found] (-lookup this k not-found))
 
-     ILookup
-     (-lookup
-       [this k]
-       (-lookup this k nil))
-     (-lookup
-       [this k not-found]
-       (or (some-> ^IMapEntry (-find this k) (val)) not-found))
+    ILookup
+    (-lookup
+      [this k]
+      (-lookup this k nil))
+    (-lookup
+      [this k not-found]
+      (if-let [entry (-find this k)]
+        (val entry)
+        not-found))
      
      IMap
      (-dissoc
@@ -250,6 +267,11 @@
      
      IMeta
      (-meta [_] (-meta m))
+
+     IKVReduce
+     (-kv-reduce
+      [this f init]
+      (reduce-kv (fn [acc k _] (f acc k (-lookup this k))) init m))
 
      IEditableCollection
      (-as-transient

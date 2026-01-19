@@ -226,3 +226,29 @@ Printing a fun-map shows raw wrapper state, not computed values:
 
 The `<<...>>` notation indicates wrapper values. `<<unrealized>>` means not yet computed.
 
+### Equality comparison realizes all values
+
+Comparing a fun-map with `=` triggers computation of all values:
+
+[source,clojure]
+----
+(def m (fun-map {:a 1 :b (fnk [a] (println "computing") (* a 2))}))
+(= m {:a 1 :b 2})  ; prints "computing"
+----
+
+This is necessary for correct equality semantics.
+
+### Hash codes use underlying map, not realized values
+
+`hashCode` and `hasheq` are computed from the underlying map (with wrappers), not the realized values. This means two fun-maps that are `=` may have different hash codes if their wrappers differ:
+
+[source,clojure]
+----
+(def m1 (fun-map {:a (fnk [] 1)}))
+(def m2 (fun-map {:a (delay 1)}))
+(= m1 m2)           ;=> true
+(= (hash m1) (hash m2))  ;=> likely false!
+----
+
+Avoid using fun-maps as hash map keys or in sets if wrapper identity matters.
+
