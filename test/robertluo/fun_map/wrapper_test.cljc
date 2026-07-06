@@ -13,29 +13,30 @@
 (deftest circular-dependency-detection
   (testing "self-referencing key throws with cycle info"
     (let [m (fun-map {:a (fnk [a] a)})]
-      (is (thrown-with-msg? #?(:clj clojure.lang.ExceptionInfo :cljs ExceptionInfo)
+      (is (thrown-with-msg? #?(:cljs ExceptionInfo :default clojure.lang.ExceptionInfo)
                             #"Circular dependency detected: :a -> :a"
                             (:a m)))))
   (testing "two-key cycle throws with cycle path"
     (let [m (fun-map {:a (fnk [b] b) :b (fnk [a] a)})]
-      (is (thrown-with-msg? #?(:clj clojure.lang.ExceptionInfo :cljs ExceptionInfo)
+      (is (thrown-with-msg? #?(:cljs ExceptionInfo :default clojure.lang.ExceptionInfo)
                             #"Circular dependency detected: :a -> :b -> :a"
                             (:a m)))))
   (testing "three-key cycle throws with full path"
     (let [m (fun-map {:a (fnk [b] b) :b (fnk [c] c) :c (fnk [a] a)})]
-      (is (thrown-with-msg? #?(:clj clojure.lang.ExceptionInfo :cljs ExceptionInfo)
+      (is (thrown-with-msg? #?(:cljs ExceptionInfo :default clojure.lang.ExceptionInfo)
                             #"Circular dependency detected: :a -> :b -> :c -> :a"
                             (:a m)))))
   (testing "ex-data contains cycle information"
     (let [m (fun-map {:a (fnk [b] b) :b (fnk [a] a)})
-          ex (try (:a m) nil (catch #?(:clj Exception :cljs :default) e e))]
+          ex (try (:a m) nil (catch #?(:cljs :default :default Exception) e e))]
       (is (= :circular-dependency (:type (ex-data ex))))
       (is (= :a (:key (ex-data ex))))
       (is (= [:a :b :a] (:cycle (ex-data ex)))))))
 
 ;; Note: These tests are CLJ-only because in CLJS, (inc nil) returns NaN
 ;; instead of throwing an exception due to JavaScript's type coercion.
-#?(:clj
+#?(:cljs nil
+   :default
    (deftest error-context-on-failure
      (testing "NPE in fnk body provides context about key"
        (let [m (fun-map {:a (fnk [missing] (inc missing))})

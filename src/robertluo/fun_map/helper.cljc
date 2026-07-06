@@ -1,7 +1,6 @@
 (ns robertluo.fun-map.helper
   "Helpers for writing wrappers"
-  (:require
-   #?(:clj [robertluo.fun-map.util :as util])))
+  #?(:clj (:require [robertluo.fun-map.util :as util])))
 
 #?(:clj
    (defn let-form
@@ -18,7 +17,7 @@
               vec)]
         [`let bindings])
       [`let bindings]))
-   :cljs
+   :default
    (defn let-form
      [_ bindings]
      [`let bindings]))
@@ -48,8 +47,7 @@
    arg-map))
 
 (comment
-  (destruct-map '{:keys [a b]})
-  )
+  (destruct-map '{:keys [a b]}))
 
 (defn make-binding
   "prepare binding for let"
@@ -85,5 +83,4 @@
             (or (:wrappers fm) default-wrappers))))
 
 (comment
-  (make-fw-wrapper (fn [_]) [] {:keys ['a]} '[(* 2 a)])
-  )
+  (make-fw-wrapper (fn [_]) [] {:keys ['a]} '[(* 2 a)]))

@@ -3,7 +3,8 @@
   (:require
    [robertluo.fun-map.core :as core]
    [robertluo.fun-map.wrapper :as wrapper]
-   #?(:clj
+   #?(:cljs nil
+      :default
       [robertluo.fun-map.helper :as helper])))
 
 (defn fun-map
@@ -44,8 +45,7 @@
   (core/fun-map? m))
 
 (comment
-  (fun-map {:a 1 :b 5 :c (wrapper/fun-wrapper (fn [m _] (let [a (get m :a) b (get m :b)] (+ a b))))})
-  )
+  (fun-map {:a 1 :b 5 :c (wrapper/fun-wrapper (fn [m _] (let [a (get m :a) b (get m :b)] (+ a b))))}))
 
 (defmacro fw
   "Returns a FunctionWrapper of an anonymous function defined by body.
@@ -85,12 +85,14 @@
   [arg-map & body]
   (helper/make-fw-wrapper `wrapper/fun-wrapper [:trace :cache] arg-map body))
 
-#?(:clj
+#?(:cljs nil
+   :default
    (defmethod helper/fw-impl :trace
      [{:keys [f options]}]
      `(wrapper/trace-wrapper ~f ~(:trace options))))
 
-#?(:clj
+#?(:cljs nil
+   :default
    (defmethod helper/fw-impl :cache
      [{:keys [f options arg-map]}]
      (let [focus (when-let [focus (:focus options)]
@@ -115,11 +117,10 @@
   (let [focus (mapv (comp symbol name) args)]
     `(fw {:keys  ~args
           :focus ~focus}
-       ~@body)))
+         ~@body)))
 
 (comment
-  (macroexpand-1 '(fnk [a :ns/b] (+ a b)))
-  )
+  (macroexpand-1 '(fnk [a :ns/b] (+ a b))))
 
 ;;;;;; life cycle map
 
@@ -139,6 +140,11 @@
      java.io.Closeable
      (halt! [this]
        (.close this)))
+   :cljr
+   (extend-protocol Haltable
+     System.IDisposable
+     (halt! [this]
+       (.Dispose this)))
    :cljs
    (extend-protocol Haltable
      core/DelegatedMap
@@ -168,16 +174,20 @@
 ;;;;;;;;;;; Utilities
 
 (deftype CloseableValue [value close-fn]
-  #?(:clj clojure.lang.IDeref :cljs IDeref)
-  #?(:clj (deref [_] value)
-     :cljs (-deref [_] value))
+  #?(:cljs IDeref :default clojure.lang.IDeref)
+  #?(:cljs (-deref [_] value)
+     :default (deref [_] value))
   Haltable
   (halt! [_]
     (close-fn))
   #?@(:clj
       [java.io.Closeable
        (close [this]
-         (halt! this))]))
+              (halt! this))]
+      :cljr
+      [System.IDisposable
+       (Dispose [this]
+                (halt! this))]))
 
 (defn closeable
   "Returns a wrapped plain value which implements IDeref, Haltable, and (in CLJ)
@@ -193,7 +203,8 @@
   [r close-fn]
   (->CloseableValue r close-fn))
 
-#?(:clj
+#?(:cljs nil
+   :default
    (defn lookup
      "Returns a ILookup object for calling f on k"
      [f]

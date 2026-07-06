@@ -4,15 +4,19 @@
                     IMapEntry
                     IPersistentMap
                     ITransientMap
-                    ATransientMap])))
+                    ATransientMap]
+              :cljr [clojure.lang
+                     IMapEntry
+                     IPersistentMap
+                     ITransientMap])))
 
-#?(:clj
-;; Marker interface for a funmap
-   (definterface IFunMap
-     (rawSeq []))
-   :cljs
+#?(:cljs
    (defprotocol  IFunMap
-     (-raw-seq [m])))
+     (-raw-seq [m]))
+   :default
+   ;; Marker interface for a funmap
+   (definterface IFunMap
+     (rawSeq [])))
 
 (declare ->DelegatedMap)
 
@@ -41,36 +45,61 @@
        (.containsKey tm k))
      (entryAt [this k]
        (fn-entry this (.entryAt tm k))))
+   :cljr
+   (deftype TransientDelegatedMap [^ITransientMap tm fn-entry]
+     ITransientMap
+     (conj [_ v] (TransientDelegatedMap. (.conj tm v) fn-entry))
+     (clojure.lang.ITransientCollection.persistent
+       [_]
+       (->DelegatedMap (persistent! tm) fn-entry))
+     (clojure.lang.ITransientAssociative.assoc
+       [_ k v]
+       (TransientDelegatedMap. (.assoc tm k v) fn-entry))
+     (valAt [this k] (.valAt this k nil))
+     (valAt
+       [this k not-found]
+       (if-let [^clojure.lang.IMapEntry entry (.entryAt this k)]
+         (.val entry)
+         not-found))
+
+     (without [_ k] (TransientDelegatedMap. (.without tm k) fn-entry))
+     (count [_] (.count tm))
+
+     clojure.lang.ITransientAssociative2
+     (containsKey [_ k]
+       (.containsKey tm k))
+     (entryAt [this k]
+       (fn-entry this (.entryAt tm k))))
    :cljs
    (deftype TransientDelegatedMap [tm fn-entry]
      ITransientMap
      (-dissoc!
-      [_ k]
-      (TransientDelegatedMap. (-dissoc! tm k) fn-entry))
-     
+       [_ k]
+       (TransientDelegatedMap. (-dissoc! tm k) fn-entry))
+
      ITransientAssociative
      (-assoc!
-      [_ k v]
-      (TransientDelegatedMap. (-assoc! tm k v) fn-entry))
-     
+       [_ k v]
+       (TransientDelegatedMap. (-assoc! tm k v) fn-entry))
+
      ITransientCollection
      (-persistent!
-      [_]
-      (->DelegatedMap (-persistent! tm) fn-entry))
+       [_]
+       (->DelegatedMap (-persistent! tm) fn-entry))
      (-conj!
-      [_ pair]
-      (TransientDelegatedMap. (-conj! tm pair) fn-entry))
+       [_ pair]
+       (TransientDelegatedMap. (-conj! tm pair) fn-entry))
 
      ILookup
      (-lookup
-      [this k]
-      (-lookup this k nil))
+       [this k]
+       (-lookup this k nil))
      (-lookup
-      [this k not-found]
-      (if-let [entry (when (-contains-key? tm k)
-                       (fn-entry this (-find tm k)))]
-        (val entry)
-        not-found))))
+       [this k not-found]
+       (if-let [entry (when (-contains-key? tm k)
+                        (fn-entry this (-find tm k)))]
+         (val entry)
+         not-found))))
 
 #?(:clj
 ;; DelegatedMap takes a map `m` and delegates most feature to it.
@@ -79,9 +108,9 @@
    (deftype DelegatedMap [^IPersistentMap m fn-entry]
      java.io.Closeable
      (close
-      [this]
-      (when-let [close-fn (some-> this meta ::close-fn)]
-        (close-fn this)))
+       [this]
+       (when-let [close-fn (some-> this meta ::close-fn)]
+         (close-fn this)))
      IFunMap
      (rawSeq [_]
        (.seq m))
@@ -101,13 +130,13 @@
      clojure.lang.IFn
      (invoke [this k] (.valAt this k))
      (invoke [this k not-found] (.valAt this k not-found))
-    clojure.lang.ILookup
-    (valAt [this k]
-      (some-> ^IMapEntry (.entryAt this k) (.val)))
-    (valAt [this k not-found]
-      (if-let [entry (.entryAt this k)]
-        (.val ^IMapEntry entry)
-        not-found))
+     clojure.lang.ILookup
+     (valAt [this k]
+       (some-> ^IMapEntry (.entryAt this k) (.val)))
+     (valAt [this k not-found]
+       (if-let [entry (.entryAt this k)]
+         (.val ^IMapEntry entry)
+         not-found))
      clojure.lang.IPersistentMap
      (count [_]
        (.count m))
@@ -166,6 +195,97 @@
      clojure.lang.IEditableCollection
      (asTransient [_]
        (TransientDelegatedMap. (transient m) fn-entry)))
+   :cljr
+   (deftype DelegatedMap [^IPersistentMap m fn-entry]
+     IFunMap
+     (rawSeq [_]
+       (.seq m))
+     clojure.lang.MapEquivalence
+     clojure.lang.IHashEq
+     (hasheq [_]
+       (.hasheq ^clojure.lang.IHashEq m))
+     (System.Object.GetHashCode [_]
+       (.GetHashCode ^System.Object m))
+     (System.Object.Equals [this other]
+       (clojure.lang.APersistentMap/mapEquals this other))
+     clojure.lang.IObj
+     (meta [_]
+       (.meta ^clojure.lang.IObj m))
+     (withMeta [_ mdata]
+       (DelegatedMap. (with-meta m mdata) fn-entry))
+     clojure.lang.IFn
+     (invoke [this k] (.valAt this k))
+     (invoke [this k not-found] (.valAt this k not-found))
+     clojure.lang.ILookup
+     (valAt [this k]
+       (some-> ^IMapEntry (.entryAt this k) (.val)))
+     (valAt [this k not-found]
+       (if-let [entry (.entryAt this k)]
+         (.val ^IMapEntry entry)
+         not-found))
+     clojure.lang.IPersistentMap
+     (clojure.lang.IPersistentMap.count [_]
+       (.count m))
+     (empty [_]
+       (DelegatedMap. (.empty m) fn-entry))
+     (clojure.lang.IPersistentMap.cons [_ o]
+       (DelegatedMap.
+        (.cons m (if (instance? IFunMap o) (.rawSeq ^IFunMap o) o))
+        fn-entry))
+     (equiv [this other]
+       (.Equals this other))
+     (containsKey [_ k]
+       (.containsKey m k))
+     (entryAt [this k]
+       (when (.containsKey m k)
+         (fn-entry this (.entryAt m k))))
+     (seq [this]
+       (clojure.lang.EnumeratorSeq/create
+        (.GetEnumerator ^System.Collections.IEnumerable this)))
+     (clojure.lang.IPersistentMap.assoc [_ k v]
+       (DelegatedMap. (.assoc m k v) fn-entry))
+     (assocEx [_ k v]
+       (DelegatedMap. (.assocEx m k v) fn-entry))
+     (without [_ k]
+       (DelegatedMap. (.without m k) fn-entry))
+     clojure.lang.Counted
+     (clojure.lang.Counted.count [_]
+       (.count m))
+     clojure.lang.IPersistentCollection
+     (clojure.lang.IPersistentCollection.cons [this o]
+       (.cons ^IPersistentMap this o))
+     clojure.lang.Associative
+     (clojure.lang.Associative.assoc [this k v]
+       (.assoc ^IPersistentMap this k v))
+     System.Collections.IEnumerable
+     (System.Collections.IEnumerable.GetEnumerator [this]
+       (let [ite (.GetEnumerator ^System.Collections.IEnumerable m)]
+         (reify System.Collections.IEnumerator
+           (MoveNext [_]
+             (.MoveNext ite))
+           (get_Current [_]
+             (fn-entry this (.Current ite)))
+           (Reset [_]
+             (.Reset ite)))))
+     System.IDisposable
+     (Dispose [this]
+       (when-let [close-fn (some-> this meta ::close-fn)]
+         (close-fn this)))
+     System.Collections.IDictionary
+     (get_Count [_]
+       (.Count ^System.Collections.IDictionary m))
+     (Contains [_ k]
+       (.containsKey m k))
+     (get_Item [this k]
+       (.valAt this k))
+
+     clojure.lang.IKVReduce
+     (kvreduce [this f init]
+       (reduce-kv (fn [acc k _] (f acc k (.valAt this k))) init m))
+
+     clojure.lang.IEditableCollection
+     (asTransient [_]
+       (TransientDelegatedMap. (transient m) fn-entry)))
    :cljs
    (deftype DelegatedMap [m fn-entry]
      IFunMap
@@ -183,41 +303,41 @@
        [this k not-found]
        (-lookup this k not-found))
      (forEach
-      [this f]
-      (doseq [[k v] (-seq this)]
-        (f v k)))
+       [this f]
+       (doseq [[k v] (-seq this)]
+         (f v k)))
 
      IFind
      (-find
-      [this k]
-      (when (-contains-key? m k)
-        (fn-entry this (-find m k))))
-     
+       [this k]
+       (when (-contains-key? m k)
+         (fn-entry this (-find m k))))
+
      IFn
      (-invoke [this k] (-lookup this k))
      (-invoke [this k not-found] (-lookup this k not-found))
 
-    ILookup
-    (-lookup
-      [this k]
-      (-lookup this k nil))
-    (-lookup
-      [this k not-found]
-      (if-let [entry (-find this k)]
-        (val entry)
-        not-found))
-     
+     ILookup
+     (-lookup
+       [this k]
+       (-lookup this k nil))
+     (-lookup
+       [this k not-found]
+       (if-let [entry (-find this k)]
+         (val entry)
+         not-found))
+
      IMap
      (-dissoc
-      [_ k]
-      (DelegatedMap. (-dissoc m k) fn-entry))
+       [_ k]
+       (DelegatedMap. (-dissoc m k) fn-entry))
 
      ICollection
      (-conj
        [_ o]
-      (if (satisfies? IFunMap o)
-        (DelegatedMap. (-conj m (-raw-seq o)) fn-entry)
-        (DelegatedMap. (-conj m o) fn-entry)))
+       (if (satisfies? IFunMap o)
+         (DelegatedMap. (-conj m (-raw-seq o)) fn-entry)
+         (DelegatedMap. (-conj m o) fn-entry)))
 
      IAssociative
      (-assoc [_ k v] (DelegatedMap. (-assoc m k v) fn-entry))
@@ -232,46 +352,46 @@
      (-count
        [_]
        (-count m))
-     
+
      IEmptyableCollection
      (-empty
-      [_]
-      (DelegatedMap. (-empty m) fn-entry))
-     
+       [_]
+       (DelegatedMap. (-empty m) fn-entry))
+
      IIterable
      (-iterator
-      [this]
-      (let [ite (-iterator m)]
-        (reify Object
-          (hasNext [_]
-            (.hasNext ite))
-          (next [_]
-            (fn-entry this (.next ite))))))
+       [this]
+       (let [ite (-iterator m)]
+         (reify Object
+           (hasNext [_]
+             (.hasNext ite))
+           (next [_]
+             (fn-entry this (.next ite))))))
 
      ISeqable
      (-seq
-      [this]
-      (some->> (-seq m)
-               (map #(fn-entry this %))))
+       [this]
+       (some->> (-seq m)
+                (map #(fn-entry this %))))
 
      IPrintWithWriter
      (-pr-writer
        [_ wtr opts]
        (-write wtr "#fun-map")
        (-pr-writer m wtr opts))
-     
+
      IWithMeta
      (-with-meta
-      [_ meta]
-      (DelegatedMap. (-with-meta m meta) fn-entry))
-     
+       [_ meta]
+       (DelegatedMap. (-with-meta m meta) fn-entry))
+
      IMeta
      (-meta [_] (-meta m))
 
      IKVReduce
      (-kv-reduce
-      [this f init]
-      (reduce-kv (fn [acc k _] (f acc k (-lookup this k))) init m))
+       [this f init]
+       (reduce-kv (fn [acc k _] (f acc k (-lookup this k))) init m))
 
      IEditableCollection
      (-as-transient
@@ -283,8 +403,8 @@
   [fn-entry]
   (fn [m ^IMapEntry entry]
     (when-let [[k v] (fn-entry m entry)]
-      #?(:clj (clojure.lang.MapEntry/create k v)
-         :cljs (cljs.core/MapEntry. k v nil)))))
+      #?(:cljs (cljs.core/MapEntry. k v nil)
+         :default (clojure.lang.MapEntry/create k v)))))
 
 (defn delegate-map
   "Return a delegated map"
@@ -293,8 +413,8 @@
 
 (defn fun-map?
   [o]
-  #?(:clj (instance? IFunMap o)
-     :cljs (satisfies? IFunMap o)))
+  #?(:cljs (satisfies? IFunMap o)
+     :default (instance? IFunMap o)))
 
 #?(:clj
    (do
@@ -303,4 +423,12 @@
          (print-method (into {} raw-entries) wtr)))
 
      (prefer-method print-method IFunMap clojure.lang.IPersistentMap)
-     (prefer-method print-method IFunMap java.util.Map)))
+     (prefer-method print-method IFunMap java.util.Map))
+   :cljr
+   (do
+     (defmethod print-method IFunMap [^IFunMap o ^System.IO.TextWriter wtr]
+       (let [raw-entries (.rawSeq o)]
+         (print-method (into {} raw-entries) wtr)))
+
+     (prefer-method print-method IFunMap clojure.lang.IPersistentMap)
+     (prefer-method print-method IFunMap System.Collections.IDictionary)))
