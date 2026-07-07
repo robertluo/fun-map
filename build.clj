@@ -14,11 +14,19 @@
                                [:url "https://opensource.org/license/epl-1-0/"]]]]}]
     (merge defaults opts)))
 
+(defn clr-test
+  "Run the test suite on ClojureCLR via cljr."
+  [opts]
+  (let [{:keys [exit]} (b/process {:command-args ["cljr" "-X:test"]})]
+    (when-not (zero? exit) (System/exit exit))
+    opts))
+
 (defn tests
   [opts]
   (-> opts
       (cb/run-task [:dev :test])
-      (cb/run-task [:dev :cljs-test])))
+      (cb/run-task [:dev :cljs-test])
+      (clr-test)))
 
 (defn copy-clj-kondo-config 
   "copy clj-kondo definition to local dev env"
